@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kube-broker.fullname" . }}
+  labels:
+    {{- include "kube-broker.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kube-broker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "kube-broker.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "kube-broker.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        # Client App with hashing request
+        - name: "{{ .Values.clientApp.name }}-hashing"
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.clientApp.image.name }}:{{ .Values.clientApp.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.clientApp.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "kube-broker.fullname" . }}-clientconfig
+          {{- with .Values.clientApp.argHash }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+        # Client App with signing request
+        - name: "{{ .Values.clientApp.name }}-signing"
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.clientApp.image.name }}:{{ .Values.clientApp.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.clientApp.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "kube-broker.fullname" . }}-clientconfig
+          {{- with .Values.clientApp.argSign }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+        # Server App, the Broker
+        - name: {{ .Values.serverApp.name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.serverApp.image.name }}:{{ .Values.serverApp.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.serverApp.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "kube-broker.fullname" . }}-serverconfig
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

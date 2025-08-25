@@ -1,0 +1,333 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  # Here are the Known-Answer-Tests for the following text (without quotes): "Welcome CryptoBroker"
+  KAT:
+    map: {
+      KAT_SHA256:
+        4a9f3b5a0ad21b75c5cd6ed018167ad9771ad2662756e26f0437c9c7a7cee27a,
+      KAT_SHA384:
+        b4bba0f7db27f690f11f795f969a539cbf1eee03282979ec1c341a73d66f2316bd180bf8bc1c1fe73cb7684e6073c079,
+      KAT_SHA512:
+        0d1d495b4dd049d07274d3e4b490dd24136315d4d8bfd83208b48213a0cd57cfa3b2ca3ab2f66cba900de28a5d4ddc4c56d116f518f2a12503c8a9bbe378577a,
+      KAT_SHA3_256:
+        dbb1a7578253838e60705e19f7f3efc384320515b1398ce7358c12307077c0fe,
+      KAT_SHA3_384:
+        dfeb2499281d6fd2bf5c6b85d20602d82303b66ad5b6464e68fe680ca67360c317a5c4514c3f5365c71cd557144397e6,
+      KAT_SHA3_512:
+        14894112f30f982c01e1de386ee9ca60bff70469d9fd249a5f9fbfc66a29c37c76b3fb15c294a6b6d3a1609fa59ca14194e2bc9da16610fa7f1a10dad38d628e,
+      }
+  # Variables for the SignCertificate tests
+  SIGN_ALGO: ["ecdsa", "rsa"]
+  HASH_ALGO: ["sha256", "sha384", "sha512"]
+
+tasks:
+  ################# Build CryptoBroker Client Js ####################
+  clean-js-client:
+    desc: "Delete the Javascript client"
+    cmds:
+      - rm -rf crypto-broker-client-js
+
+  clone-js-client:
+    cmds:
+      - git clone https://github.com/open-crypto-broker/crypto-broker-client-js.git
+      - task: init-protobuf-js-client
+
+  init-protobuf-js-client:
+    internal: true
+    dir: crypto-broker-client-js/protobuf
+    cmds:
+      - git submodule update --init
+
+  build-js-client-cli:
+    internal: true
+    dir: crypto-broker-client-js/
+    cmds:
+      - npm install
+
+  build-js-client:
+    desc: "Clone and build the Javascript client"
+    cmds:
+      - task: clean-js-client
+      - task: clone-js-client
+      - task: build-js-client-cli
+
+  ################# Build CryptoBroker Client Go ####################
+  clean-go-client:
+    desc: "Delete the Go client"
+    cmds:
+      - rm -rf crypto-broker-client-go
+
+  clone-go-client:
+    cmds:
+      - git clone https://github.com/open-crypto-broker/crypto-broker-client-go.git
+      - task: init-protobuf-go-client
+
+  init-protobuf-go-client:
+    internal: true
+    dir: crypto-broker-client-go/protobuf
+    cmds:
+      - git submodule update --init
+
+  build-go-client-cli:
+    internal: true
+    dir: crypto-broker-client-go/cli
+    cmds:
+      - go build -o ./bin/test-app cmd/test-app/test-app.go
+
+  build-go-client:
+    desc: "Clone and build the Go client"
+    cmds:
+      - task: clean-go-client
+      - task: clone-go-client
+      - task: build-go-client-cli
+
+  ################# Build CryptoBroker Server ####################
+  clean-crypto-broker-server:
+    desc: "Delete the Crypto Broker server folder"
+    cmds:
+      - rm -rf crypto-broker-server
+
+  clone-crypto-broker-server:
+    cmds:
+      - git clone https://github.com/open-crypto-broker/crypto-broker-server.git
+      - task: init-protobuf-crypto-broker-server
+
+  init-protobuf-crypto-broker-server:
+    internal: true
+    dir: crypto-broker-server/protobuf
+    cmds:
+      - git submodule update --init
+
+  build-crypto-broker-server-internal:
+    internal: true
+    status:
+      - test -d crypto-broker-server
+    dir: crypto-broker-server
+    cmds:
+      - go build -o bin/cryptobroker-server cmd/server/server.go
+
+  build-crypto-broker-server:
+    desc: "Clone and build the Crypto Broker server"
+    cmds:
+      - task: clean-crypto-broker-server
+      - task: clone-crypto-broker-server
+      - task: build-crypto-broker-server-internal
+
+  ################# Cleanup Tasks ####################
+  clean-cf-js-deployment:
+    desc: "Cleans the Cloud Foundry Javascript app"
+    dir: deployments/cloud-foundry/js
+    cmds:
+      - rm -rf js-deployment
+
+  clean-cf-go-deployment:
+    desc: "Cleans the Cloud Foundry Go app"
+    dir: deployments/cloud-foundry/go
+    cmds:
+      - rm -rf go-deployment
+
+  clean-all-local:
+    desc: "Delete all local folders"
+    cmds:
+      - task: clean-go-client
+      - task: clean-js-client
+      - task: clean-crypto-broker-server
+      - task: clean-cf-go-deployment
+      - task: clean-cf-js-deployment
+
+  clean-all:
+    desc: "Deletes all local folders and also the apps on Cloud Foundry"
+    cmds:
+      - task: clean-all-local
+      - cf delete -r -f crypto-broker-js-client
+      - cf delete -r -f crypto-broker-go-client
+
+  ################# End-to-End Tests ####################
+  build-dependencies:
+    desc: "Build all dependencies: clients and server"
+    internal: true
+    deps: [build-go-client, build-js-client, build-crypto-broker-server]
+
+  # Start/Stop CryptoBroker-server
+  start-crypto-broker-server:
+    desc: "Start the Crypto Broker Server with a custom test profile"
+    internal: true
+    cmds:
+      - CRYPTO_BROKER_PROFILES_DIR=$PWD/testing/profiles ./crypto-broker-server/bin/cryptobroker-server &
+
+  stop-crypto-broker-server:
+    desc: "Stop the Crypto Broker Server after all tests were executed"
+    internal: true
+    cmds:
+      - kill $(ps -e | awk '/cryptobroker/ {print $1}')
+
+  # Hashing tests from the clients
+  test-hashing-clients:
+    desc: "Iterate hashing tests over all clients"
+    internal: true
+    cmds:
+      - for: ['./crypto-broker-client-go/cli/bin/test-app', 'node crypto-broker-client-js/dist/cli.js']
+        task: test-hashing-KATs
+        vars:
+          CLIENTS: '{{.ITEM}}'
+
+  test-hashing-KATs:
+    desc: "Iterate over all hashing KATs"
+    internal: true
+    vars:
+      ref: .KAT
+    cmds:
+      - for:
+          var: KAT
+        cmd:
+          |
+          echo "Test {{.KEY}}"
+          HASH_RESPONSE=$({{.CLIENTS}} --profile={{.KEY}} hash "Welcome CryptoBroker" | grep -oP '\"hashValue\":\s?"\K[^"]+')
+          if [[ $HASH_RESPONSE != {{.ITEM}} ]] then
+            echo "Error: Hash values do not match!"
+            exit 1
+          fi
+
+  # Sign certificate tests from the clients
+  test-sign-certificate-clients:
+    desc: "Iterate signing tests over all clients"
+    internal: true
+    cmds:
+      - for: ['./crypto-broker-client-go/cli/bin/test-app', 'node crypto-broker-client-js/dist/cli.js']
+        task: test-sign-certificate
+        vars:
+          CLIENTS: '{{.ITEM}}'
+      - for: ['./crypto-broker-client-go/cli/bin/test-app', 'node crypto-broker-client-js/dist/cli.js']
+        task: test-sign-certificate-validity
+        vars:
+          CLIENTS: '{{.ITEM}}'
+
+  test-sign-certificate:
+    desc: "Iterate over ECDSA/RSA with SHA2 algorithms"
+    internal: true
+    cmds:
+      - for:
+          matrix:
+            SIGN_ALGO:
+              ref: .SIGN_ALGO
+            HASH_ALGO:
+              ref: .HASH_ALGO
+        cmd:
+          |
+          echo "Test {{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}"
+          mkdir -p tmp/certificate-responses/{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}
+          SIGNED_CERTIFICATE=$({{.CLIENTS}} --profile=sign-certificate-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}} sign testing/certificates/test-csr/ecdsa_256.csr testing/certificates/test-ca/root-CA-{{.ITEM.SIGN_ALGO}}.pem testing/certificates/test-ca/root-CA-{{.ITEM.SIGN_ALGO}}-private-key.pem | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
+          printf "-----BEGIN CERTIFICATE-----\n$SIGNED_CERTIFICATE\n-----END CERTIFICATE-----\n" > tmp/certificate-responses/{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem
+          openssl x509 -inform PEM -in tmp/certificate-responses/{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem -text
+          rm -rf tmp/
+
+  test-sign-certificate-validity:
+    desc: "Test profile with different validities"
+    internal: true
+    cmds:
+      - |
+        echo "Test different validities"
+        mkdir -p tmp/certificate-responses/validities
+        SIGNED_CERTIFICATE=$({{.CLIENTS}} --profile=sign-certificate-validities sign testing/certificates/test-csr/ecdsa_256.csr testing/certificates/test-ca/root-CA-ecdsa.pem testing/certificates/test-ca/root-CA-ecdsa-private-key.pem | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
+        printf "-----BEGIN CERTIFICATE-----\n$SIGNED_CERTIFICATE\n-----END CERTIFICATE-----\n" > tmp/certificate-responses/validities/tmp-cert-response-validity.pem
+        openssl x509 -inform PEM -in tmp/certificate-responses/validities/tmp-cert-response-validity.pem -text
+        rm -rf tmp/
+
+  # Public tasks for testing
+  test-hash-clients:
+    desc: "Build, run and perform hashing tests for all clients"
+    cmds:
+      - task: build-dependencies
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
+      - task: test-hashing-clients
+
+  test-sign-clients:
+    desc: "Build, run and perform signing tests for all clients"
+    cmds:
+      - task: build-dependencies
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
+      - task: test-sign-certificate-clients
+
+  test-clients:
+    desc: "Combine all tests for all clients in one task"
+    cmds:
+      - task: build-dependencies
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
+      - task: test-hashing-clients
+      - task: test-sign-certificate-clients
+
+  ################# CloudFoundry Deployment ####################
+  # Deploy CryptoBroker-server and CryptoBroker-client-go to CloudFoundry
+  deploy-cf-go-cryptobroker:
+    desc: "Deploy CryptoBroker and Go-client to CloudFoundry"
+    deps: [build-go-client, build-crypto-broker-server]
+    dir: deployments/cloud-foundry/go
+    cmds:
+      - task: clean-cf-go-deployment
+      - mkdir go-deployment
+      - cp ../../../crypto-broker-server/bin/cryptobroker-server go-deployment/
+      - cp ../../../crypto-broker-server/profiles/Profiles.yaml go-deployment/
+      - cp ../../../crypto-broker-client-go/cli/bin/test-app go-deployment/
+      - cf push --random-route -f manifest.yaml -p go-deployment/
+
+  # Deploy CryptoBroker-server and CryptoBroker-client-js to CloudFoundry
+  create-js-deployment-folder:
+    internal: true
+    dir: deployments/cloud-foundry/js
+    cmds:
+      - mkdir js-deployment
+
+  copy-crypto-broker-server:
+    internal: true
+    dir: deployments/cloud-foundry/js
+    cmds:
+      - cp ../../../crypto-broker-server/bin/cryptobroker-server js-deployment/
+      - cp ../../../crypto-broker-server/profiles/Profiles.yaml js-deployment/
+
+  copy-crypto-broker-client-js:
+    internal: true
+    dir: deployments/cloud-foundry/js
+    cmds:
+      - cp ../../../crypto-broker-client-js/package*.json js-deployment/
+      - cp -r ../../../crypto-broker-client-js/dist/ js-deployment/
+
+  init-node-modules:
+    internal: true
+    dir: deployments/cloud-foundry/js/js-deployment
+    cmds:
+      - npm ci --omit=dev --ignore-scripts
+
+  deploy-cf-js-cryptobroker:
+    desc: "Deploy CryptoBroker and JS-client to CloudFoundry"
+    deps: [build-js-client, build-crypto-broker-server]
+    dir: deployments/cloud-foundry/js
+    cmds:
+      - task: clean-cf-js-deployment
+      - task: create-js-deployment-folder
+      - task: copy-crypto-broker-server
+      - task: copy-crypto-broker-client-js
+      - task: init-node-modules
+      - cf push --random-route -f manifest.yaml -p js-deployment/
+
+  ################# Kubernetes Deployment ####################
+  kube-deploy:
+    desc: "Deploys the Kubernetes cryptobroker. It requires a .env local file with the Repository's credentials"
+    aliases: [deploy]
+    dotenv: ['.env']
+    preconditions:
+      - test -f .env
+    cmds:
+      - helm upgrade --install broker ./deployments/k8s/kube-broker/ --namespace crypto-broker --create-namespace --force --set imageCredentials.username=$DOCKER_USERNAME --set imageCredentials.password=$DOCKER_PASSWORD --set imageCredentials.email=$DOCKER_EMAIL
+
+  kube-destroy:
+    desc: "Destroys the Kubernetes cryptobroker deployment"
+    dotenv: ['.env']
+    aliases: [destroy]
+    cmds:
+      - helm uninstall broker -n crypto-broker

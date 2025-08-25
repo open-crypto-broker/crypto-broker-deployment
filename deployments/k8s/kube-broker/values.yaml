@@ -1,0 +1,96 @@
+# Default values for kube-broker.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# set the namespace for all variables
+namespace: crypto-broker
+
+# sets the number of replicas, originally set to 1
+replicaCount: 1
+
+# Connection type configuration (http or grpc)
+profilesDir: /app/profiles
+# This makes the app aware that is running on Docker and makes it run on a loop
+dockerDeployed: "True"
+
+# This is for the secretes for pulling an image from a private repository
+# imagePullSecrets: []
+
+clientApp:
+  name: client-app
+  image:
+    name: "TODO: add new docker repository"
+    tag: latest
+    pullPolicy: Always
+  argHash:
+    - --profile=Default
+    - hash
+    - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
+  argSign:
+    - --profile=Default
+    - sign
+    - "/certificates/end-entity.csr"
+    - "/certificates/ca_cert.pem"
+    - "/certificates/private_key.pem"
+
+serverApp:
+  name: server-app
+  image:
+    name: "TODO: add new docker repository"
+    tag: latest
+    pullPolicy: Always
+
+volumes:
+  - name: socket-volume
+    emptyDir: {}
+  - name: certs-volume
+    configMap:
+      name: "kube-broker-certificates"
+
+volumeMounts:
+  - name: socket-volume
+    mountPath: /tmp
+  - name: certs-volume
+    mountPath: /certificates
+
+
+imageCredentials:
+  # Set to true to create the image pull secret automatically by the chart
+  create: true
+  secretName: artifactory-secret
+  registry: "TODO: add new docker repository"
+  username: ""             # Placeholder, will be overridden with enviroment variable
+  password: ""             # Placeholder, will be overridden with enviroment variable
+  email: ""                # Placeholder, will be overridden with enviroment variable
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials
+  automount: true
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi

@@ -1,0 +1,19 @@
+applications:
+  - name: crypto-broker-go-client
+    command: './test-app hash "Welcome CryptoBroker"'
+    disk_quota: 256M
+    instances: 1
+    memory: 128M
+    env:
+      DOCKER_DEPLOYED: true
+    buildpacks:
+      - binary_buildpack
+    health-check-type: process
+    process_types:
+      - web
+    sidecars:
+      - name: crypto-broker-server
+        health-check-type: process
+        process_types:
+          - web
+        command: 'CRYPTO_BROKER_PROFILES_DIR=$PWD ./server'

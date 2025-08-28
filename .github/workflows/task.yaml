@@ -1,0 +1,19 @@
+name: Task Continuous Integration
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  task-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Task
+        uses: arduino/setup-task@v2
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run end-to-end tests
+        run: task test-clients

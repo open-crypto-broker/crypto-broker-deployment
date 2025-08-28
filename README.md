@@ -1,21 +1,109 @@
-[![REUSE status](https://api.reuse.software/badge/github.com/open-crypto-broker/crypto-broker-deployment)](https://api.reuse.software/info/github.com/open-crypto-broker/crypto-broker-deployment)
+# Crypto Broker Deployment and End-to-End Testing
 
-# crypto-broker-deployment
+This repository features two purposes.
+On the one hand it describes how the Crypto Broker Server and the different Crypto Broker Clients can be deployed to Cloud Foundry and Kubernetes.
+On the other hand it can perform end-to-end tests which simulate the usage of the Crypto Broker Server and the different Crypto Broker Clients from a user perspective.
 
-## About this project
+## Deployment
 
-crypto-broker-deployment
+### Cloud Foundry
 
-## Requirements and Setup
+#### Cloud Foundry Setup
 
-*Insert a short description what is required to get your project running...*
+As a prerequisite, the Cloud Foundry CLI needs to be installed locally. After that the CLI tool can be used to deploy an app to a Cloud Foundry instance. Please check the [Cloud Foundry Documentation](https://docs.cloudfoundry.org/devguide/deploy-apps/deploy-app.html) for the step by step guide on how to do that.
+
+#### Cloud Foundry Deployment
+
+The deployment of a Cloud Foundry app is managed via a [Cloud Foundry Manifest](https://docs.cloudfoundry.org/devguide/deploy-apps/manifest.html) file.
+The Crypto Broker Server is meant to be deployed as a Sidecar to the main app, which uses any of the Crypto Broker Clients to communicate with the Server via a unix socket on a shared filesystem between Client and Server (more on the [documentation repo](https://github.com/open-crypto-broker/crypto-broker-documentation)).
+
+Two example Manifests can be found inside the [deployments folder](deployments/cloud-foundry/), both sharing the same sidecar. The only difference between the two is the client library used, one in Golang, the other one in NodeJs.
+
+As it can be seen from the Manifest files, only two things are needed for deploying the Server as a sidecar:
+
+* The server's compiled binary, which can be found on the [Releases](https://github.com/open-crypto-broker/crypto-broker-server/releases) of the Crypto Broker Server repository. Please select the appropriate architecture  (default Cloud Foundry instance is `amd64`).
+* A `Profile.yaml` file, which is [specified here](https://github.com/open-crypto-broker/crypto-broker-documentation/blob/main/spec/0002-profile-structure.md). The path to this file is then passed as an environment variable named `CRYPTO_BROKER_PROFILES_DIR` to the server. An example profile file is in the testing/profiles folder.
+
+For simplicity, in the example manifests both binary and profile are located in the same folder as the `manifest.yaml` file. That way, they can be easily accessed by the CLI when deploying to Cloud Foundry.
+
+In order to deploy the Crypto Broker Server and one of the Crypto Broker Clients, the following tasks can be executed.
+A prerequisite is, that the login to the Cloud Foundry instance happened already.
+
+```bash
+task deploy-cf-js-cryptobroker
+# or
+task deploy-cf-go-cryptobroker
+```
+
+### Kubernetes
+
+#### Kubernetes Setup
+
+For deployment in Kubernetes, Kubernetes and Helm must be installed in terminal. Kubernetes is installed with Docker-desktop, while Helm can be easily installed as per documentation [Helm Install](https://helm.sh/docs/intro/install/). Optionally, for deploying on a custom Kubernetes Cloud Cluster, you might need to setup your local `.env` file and change it to write your own user information (see above).
+
+Please, DO NOT share this file with anybody or upload it anywhere. This file should only be stored locally in your computer and will be read each time you run a `task` command.
+
+#### Kubernetes Deployment
+
+For deployment, simply run the following command (or equivalent directly from Taskfile):
+
+```shell
+task kube-deploy
+# or
+task deploy
+```
+
+This will deploy the Helm chart `kube-broker` in the `crypto-broker` namespace in your local kubernetes cluster. The cluster will spin up a server which listens on the Unix Socket and two clients that will send periodically requests (hash and sign) to the server.
+
+To modify the parameters of the deployment, you can modify the values of the [values file](deployments/k8s/kube-broker/values.yaml). This includes for example the image name and tag, the arguments for hashing and signing, the number of replicas and more. Feel free to check the [Kubernetes Readme](deployments/k8s/kube-broker/README.md) for a more detailed explanation of the different values and configuration options that can be set.
+
+To uninstall the Helm deployment run:
+
+```shell
+task kube-destroy
+# or
+task destroy
+```
+
+## End-to-End (E2E) Testing
+
+The `Taskfile.yaml` file specifies, besides other tasks, end-to-end tests.
+These end-to-end tests clone the different repositories, builds them, starts them and then perform Known-Answer-Tests for hashing or signing a certificate.
+With these tests the complete message flow is visible from start to end.
+
+The following command performs all tests with all combinations of clients and the server:
+
+```bash
+task test-clients
+```
+
+The E2E hashing tests for all clients and server can be executed with:
+
+```bash
+task test-hash-clients
+```
+
+The E2E signing tests for all clients and server are executed with:
+
+```bash
+task test-sign-clients
+```
+
+These E2E tests are also executed in GitHub Actions.
+During these E2E tests the repositories are built and still available after testing.
+In order to clean everything up, the following task can be used:
+
+```bash
+task clean-all-local
+```
 
 ## Support, Feedback, Contributing
 
-This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/open-crypto-broker/<your-project>/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).
+This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/open-crypto-broker/crypto-broker-deployment/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).
 
 ## Security / Disclosure
-If you find any bug that may be a security problem, please follow our instructions at [in our security policy](https://github.com/open-crypto-broker/<your-project>/security/policy) on how to report it. Please do not create GitHub issues for security-related doubts or problems.
+
+If you find any bug that may be a security problem, please follow our instructions at [in our security policy](https://github.com/open-crypto-broker/crypto-broker-deployment/security/policy) on how to report it. Please do not create GitHub issues for security-related doubts or problems.
 
 ## Code of Conduct
 
@@ -23,4 +111,4 @@ We as members, contributors, and leaders pledge to make participation in our com
 
 ## Licensing
 
-Copyright 2025 SAP SE or an SAP affiliate company and crypto-broker-deployment contributors. Please see our [LICENSE](LICENSE) for copyright and license information. Detailed information including third-party components and their licensing/copyright information is available [via the REUSE tool](https://api.reuse.software/info/github.com/open-crypto-broker/<your-project>).
+Copyright 2025 SAP SE or an SAP affiliate company and Open Crypto Broker contributors. Please see our [LICENSE](LICENSE) for copyright and license information. Detailed information including third-party components and their licensing/copyright information is available [via the REUSE tool](https://api.reuse.software/info/github.com/open-crypto-broker/crypto-broker-deployment).

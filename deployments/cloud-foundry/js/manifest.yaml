@@ -1,0 +1,21 @@
+applications:
+  - name: crypto-broker-js-client
+    command: 'node dist/cli.js hash "Welcome CryptoBroker"'
+    disk_quota: 256M
+    instances: 1
+    memory: 128M
+    env:
+      HUSKY: 0
+      DOCKER_DEPLOYED: true
+    buildpacks:
+      - nodejs_buildpack
+      - binary_buildpack
+    health-check-type: process
+    process_types:
+      - web
+    sidecars:
+      - name: crypto-broker-server
+        health-check-type: process
+        process_types:
+          - web
+        command: 'CRYPTO_BROKER_PROFILES_DIR=$PWD ./server'

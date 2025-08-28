@@ -1,0 +1,12 @@
+# env file
+.env
+
+# VS code files
+.vscode/*
+
+# Task files
+.task/*
+
+# Other crypto repositories
+crypto-broker-*/
+crypto-broker-*-*/

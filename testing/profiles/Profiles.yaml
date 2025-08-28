@@ -1,0 +1,258 @@
+---
+# SHA2 Tests
+- Name: KAT_SHA256
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha-256
+
+- Name: KAT_SHA384
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha-384
+
+- Name: KAT_SHA512
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha-512
+
+# SHA3 Tests
+- Name: KAT_SHA3_256
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha3-256
+
+- Name: KAT_SHA3_384
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha3-384
+
+- Name: KAT_SHA3_512
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha3-512
+
+# SignCertificate Tests
+# ECDSA
+- Name: sign-certificate-ecdsa-sha256
+  Settings:
+    CryptoLibrary: native
+  API:
+    SignCertificate:
+      SignAlg: ecdsa
+      HashAlg: sha-256
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 8760h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 2048
+            MaxKeySize: 4096
+          ECDSA:
+            MinKeySize: 256
+            MaxKeySize: 521
+        Issuer:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+          ECDSA:
+            MinKeySize: 384
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
+
+- Name: sign-certificate-ecdsa-sha384
+  Settings:
+    CryptoLibrary: native
+  API:
+    SignCertificate:
+      SignAlg: ecdsa
+      HashAlg: sha-384
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 8760h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 2048
+            MaxKeySize: 4096
+          ECDSA:
+            MinKeySize: 256
+            MaxKeySize: 521
+        Issuer:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+          ECDSA:
+            MinKeySize: 384
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
+
+- Name: sign-certificate-ecdsa-sha512
+  Settings:
+    CryptoLibrary: native
+  API:
+    SignCertificate:
+      SignAlg: ecdsa
+      HashAlg: sha-512
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 8760h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 2048
+            MaxKeySize: 4096
+          ECDSA:
+            MinKeySize: 256
+            MaxKeySize: 521
+        Issuer:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+          ECDSA:
+            MinKeySize: 384
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
+
+# RSA
+- Name: sign-certificate-rsa-sha256
+  Settings:
+    CryptoLibrary: native
+  API:
+    SignCertificate:
+      SignAlg: rsa
+      HashAlg: sha-256
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 8760h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 2048
+            MaxKeySize: 4096
+          ECDSA:
+            MinKeySize: 256
+            MaxKeySize: 521
+        Issuer:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+          ECDSA:
+            MinKeySize: 384
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
+
+- Name: sign-certificate-rsa-sha384
+  Settings:
+    CryptoLibrary: native
+  API:
+    SignCertificate:
+      SignAlg: rsa
+      HashAlg: sha-384
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 8760h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 2048
+            MaxKeySize: 4096
+          ECDSA:
+            MinKeySize: 256
+            MaxKeySize: 521
+        Issuer:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+          ECDSA:
+            MinKeySize: 384
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
+
+- Name: sign-certificate-rsa-sha512
+  Settings:
+    CryptoLibrary: native
+  API:
+    SignCertificate:
+      SignAlg: rsa
+      HashAlg: sha-512
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 8760h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 2048
+            MaxKeySize: 4096
+          ECDSA:
+            MinKeySize: 256
+            MaxKeySize: 521
+        Issuer:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+          ECDSA:
+            MinKeySize: 384
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
+
+# Different validities
+- Name: sign-certificate-validities
+  Settings:
+    CryptoLibrary: native
+  API:
+    SignCertificate:
+      SignAlg: ecdsa
+      HashAlg: sha-512
+      Validity:
+        ValidNotBeforeOffset: +5h
+        ValidNotAfterOffset: +10h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 2048
+            MaxKeySize: 4096
+          ECDSA:
+            MinKeySize: 256
+            MaxKeySize: 521
+        Issuer:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+          ECDSA:
+            MinKeySize: 384
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false

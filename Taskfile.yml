@@ -75,7 +75,7 @@ tasks:
     internal: true
     dir: crypto-broker-client-go/cli
     cmds:
-      - go build -o ./bin/test-app cmd/test-app/test-app.go
+      - go build -o ./bin/go-client-cli cmd/test-app/test-app.go
 
   build-go-client:
     desc: "Clone and build the Go client"
@@ -169,7 +169,7 @@ tasks:
     desc: "Iterate hashing tests over all clients"
     internal: true
     cmds:
-      - for: ['./crypto-broker-client-go/cli/bin/test-app', 'node crypto-broker-client-js/dist/cli.js']
+      - for: ['./crypto-broker-client-go/cli/bin/go-client-cli', 'node crypto-broker-client-js/dist/cli.js']
         task: test-hashing-KATs
         vars:
           CLIENTS: '{{.ITEM}}'
@@ -196,11 +196,11 @@ tasks:
     desc: "Iterate signing tests over all clients"
     internal: true
     cmds:
-      - for: ['./crypto-broker-client-go/cli/bin/test-app', 'node crypto-broker-client-js/dist/cli.js']
+      - for: ['./crypto-broker-client-go/cli/bin/go-client-cli', 'node crypto-broker-client-js/dist/cli.js']
         task: test-sign-certificate
         vars:
           CLIENTS: '{{.ITEM}}'
-      - for: ['./crypto-broker-client-go/cli/bin/test-app', 'node crypto-broker-client-js/dist/cli.js']
+      - for: ['./crypto-broker-client-go/cli/bin/go-client-cli', 'node crypto-broker-client-js/dist/cli.js']
         task: test-sign-certificate-validity
         vars:
           CLIENTS: '{{.ITEM}}'
@@ -272,8 +272,8 @@ tasks:
       - task: clean-cf-go-deployment
       - mkdir go-deployment
       - cp ../../../crypto-broker-server/bin/cryptobroker-server go-deployment/
-      - cp ../../../crypto-broker-server/profiles/Profiles.yaml go-deployment/
-      - cp ../../../crypto-broker-client-go/cli/bin/test-app go-deployment/
+      - cp ../../../testing/profiles/Profiles.yaml go-deployment/
+      - cp ../../../crypto-broker-client-go/cli/bin/go-client-cli go-deployment/
       - cf push --random-route -f manifest.yaml -p go-deployment/
 
   # Deploy CryptoBroker-server and CryptoBroker-client-js to CloudFoundry
@@ -288,7 +288,7 @@ tasks:
     dir: deployments/cloud-foundry/js
     cmds:
       - cp ../../../crypto-broker-server/bin/cryptobroker-server js-deployment/
-      - cp ../../../crypto-broker-server/profiles/Profiles.yaml js-deployment/
+      - cp ../../../testing/profiles/Profiles.yaml js-deployment/
 
   copy-crypto-broker-client-js:
     internal: true

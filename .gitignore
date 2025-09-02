@@ -1,4 +1,7 @@
-# env file
+# Common file types
+.DS_Store
+
+# Environment file
 .env
 
 # VS code files
@@ -10,3 +13,6 @@
 # Other crypto repositories
 crypto-broker-*/
 crypto-broker-*-*/
+
+# Do not include deployment artifacts
+deployments/cloud-foundry/**/*-deployment/

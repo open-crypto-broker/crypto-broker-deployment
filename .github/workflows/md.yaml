@@ -2,7 +2,7 @@ name: Markdownlint
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
     paths:
       - '**.md'
       - '!bin/**/*.md'

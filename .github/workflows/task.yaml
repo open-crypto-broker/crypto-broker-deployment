@@ -1,8 +1,10 @@
 name: Task Continuous Integration
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
+  schedule:
+    - cron: '0 3 * * *' # Run this pipeline every day at 03:00
 
 jobs:
   task-pipeline:

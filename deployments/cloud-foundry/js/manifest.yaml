@@ -1,6 +1,6 @@
 applications:
   - name: crypto-broker-js-client
-    command: 'node dist/cli.js hash "Welcome CryptoBroker"'
+    command: 'node dist/cli.js --profile=KAT_SHA3_512 hash "Welcome CryptoBroker"'
     disk_quota: 256M
     instances: 1
     memory: 128M
@@ -18,4 +18,4 @@ applications:
         health-check-type: process
         process_types:
           - web
-        command: 'CRYPTO_BROKER_PROFILES_DIR=$PWD ./server'
+        command: 'CRYPTO_BROKER_PROFILES_DIR=$PWD ./cryptobroker-server'

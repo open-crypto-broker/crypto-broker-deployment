@@ -14,5 +14,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
     - name: Run mdl
       uses: actionshub/markdownlint@main

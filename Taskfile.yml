@@ -105,6 +105,17 @@ tasks:
       - go build -o bin/cryptobroker-server cmd/server/server.go
 
   ################# Cleanup Tasks ####################
+  delete-cloned-repos:
+    desc: "Delete the cloned Crypto Broker server and the cloned client repositories"
+    vars:
+      ref: .CLIENTS
+    cmds:
+      - task: delete-crypto-broker-server
+      - for: { var: CLIENTS }
+        task: delete-client
+        vars:
+          CLIENT: '{{.ITEM}}'
+
   delete-client-deployment-folder:
     desc: "Delete the client deployment folder for Cloud Foundry specified with CLIENT='', values are 'go', 'js'"
     requires:
@@ -114,27 +125,17 @@ tasks:
     cmds:
       - rm -rf deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment
 
-  delete-all-local:
-    desc: "Delete all local folders"
+  delete-cloned-repos-deployment:
+    desc: "Delete the cloned repositories, the deployment folders, and also the deployment on Cloud Foundry"
+    aliases: [delete-all]
     vars:
       ref: .CLIENTS
     cmds:
-      - task: delete-crypto-broker-server
-      - for: { var: CLIENTS }
-        task: delete-client
-        vars:
-          CLIENT: '{{.ITEM}}'
+      - task: delete-cloned-repos
       - for: { var: CLIENTS }
         task: delete-client-deployment-folder
         vars:
           CLIENT: '{{.ITEM}}'
-
-  delete-all:
-    desc: "Deletes all local folders and also the deployment on Cloud Foundry"
-    vars:
-      ref: .CLIENTS
-    cmds:
-      - task: delete-all-local
       - for: { var: CLIENTS }
         cmd:
           cf delete -r -f crypto-broker-{{.ITEM}}-client

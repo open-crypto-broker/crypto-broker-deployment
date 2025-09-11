@@ -54,17 +54,17 @@ tasks:
     internal: true
     desc: "Clone client repository"
     cmds:
-      - git clone https://github.com/open-crypto-broker/crypto-broker-client-{{.CLIENT}}.git
+      - git clone -b dev --single-branch https://github.com/open-crypto-broker/crypto-broker-client-{{.CLIENT}}.git
       # initialize protobuf submodule
-      #- |
-      #  cd crypto-broker-client-{{.CLIENT}}/protobuf
-      #  git submodule update --init
+      - |
+       cd crypto-broker-client-{{.CLIENT}}/protobuf
+       git submodule update --init
 
   build-client-go:
     internal: true
     dir: crypto-broker-client-go/cli
     cmds:
-      - go build -o ./bin/go-client-cli cmd/test-app/test-app.go
+      - go build -o ./bin/go-client-cli cmd/client-cli/client-cli.go
 
   build-client-js:
     internal: true
@@ -87,7 +87,7 @@ tasks:
 
   clone-crypto-broker-server:
     cmds:
-      - git clone https://github.com/open-crypto-broker/crypto-broker-server.git
+      - git clone -b dev --single-branch https://github.com/open-crypto-broker/crypto-broker-server.git
       - task: init-protobuf-crypto-broker-server
 
   init-protobuf-crypto-broker-server:

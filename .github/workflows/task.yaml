@@ -1,4 +1,5 @@
 name: Task Continuous Integration
+
 on:
   push:
     branches: [ main, dev ]

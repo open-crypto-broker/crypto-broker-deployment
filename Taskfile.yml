@@ -28,8 +28,14 @@ vars:
 
 tasks:
   ################# Build Crypto Broker Client ####################
+  # Public build task for the clients.
+  # At first, an already existing cloned repo will be deleted.
+  # Then the repo will be cloned and the submodules initialized.
+  # After that the client will be build, language specific tasks are executed.
   build-client:
-    desc: "Build a client depending on the CLI argument with CLIENT='', values: 'go', 'js'"
+    desc: "Build a client depending on the CLI argument with CLIENT='', values: 'go', 'js'. Also the branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
     requires:
       vars:
         - name: CLIENT
@@ -42,8 +48,10 @@ tasks:
       - task: clone-client
         vars:
           CLIENT: '{{.CLIENT}}'
+          BRANCH: '{{.BRANCH}}'
       - task: build-client-{{.CLIENT}}
 
+  # Internal tasks for building a specified client
   delete-client:
     internal: true
     desc: "Delete client source folder"
@@ -54,7 +62,7 @@ tasks:
     internal: true
     desc: "Clone client repository"
     cmds:
-      - git clone -b dev --single-branch https://github.com/open-crypto-broker/crypto-broker-client-{{.CLIENT}}.git
+      - git clone -b {{.BRANCH}} --single-branch https://github.com/open-crypto-broker/crypto-broker-client-{{.CLIENT}}.git
       # initialize protobuf submodule
       - |
        cd crypto-broker-client-{{.CLIENT}}/protobuf
@@ -73,11 +81,19 @@ tasks:
       - npm install
 
   ################# Build Crypto Broker Server ####################
+  # Public build task for Crypto Broker server.
+  # At first delete the source folder if it exists.
+  # Then the repo will be cloned and the submodules initialized.
+  # After that the Crypto Broker will be build.
   build-crypto-broker-server:
-    desc: "Clone and build Crypto Broker server"
+    desc: "Clone and build Crypto Broker server. The branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
     cmds:
       - task: delete-crypto-broker-server
       - task: clone-crypto-broker-server
+        vars:
+          BRANCH: '{{.BRANCH}}'
       - task: build-crypto-broker-server-internal
 
   delete-crypto-broker-server:
@@ -85,9 +101,12 @@ tasks:
     cmds:
       - rm -rf crypto-broker-server
 
+  # Internal tasks for building Crypto Broker server
   clone-crypto-broker-server:
+    desc: "Clone Crypto Broker server"
+    internal: true
     cmds:
-      - git clone -b dev --single-branch https://github.com/open-crypto-broker/crypto-broker-server.git
+      - git clone -b {{.BRANCH}} --single-branch https://github.com/open-crypto-broker/crypto-broker-server.git
       - task: init-protobuf-crypto-broker-server
 
   init-protobuf-crypto-broker-server:

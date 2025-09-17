@@ -28,33 +28,46 @@ vars:
 
 tasks:
   ################# Build Crypto Broker Client ####################
+  # Public build task for the clients.
+  # At first, an already existing cloned repo will be deleted.
+  # Then the repo will be cloned and the submodules initialized.
+  # After that the client will be build, language specific tasks are executed.
   build-client:
-    desc: "Build a client depending on the CLI argument with CLIENT='', values: 'go', 'js'"
+    desc: "Build a client depending on the CLI argument with CLIENT='', values: 'go', 'js'. Also the branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
     requires:
       vars:
         - name: CLIENT
           enum: [go, js]
     cmds:
-      - echo "Building {{.CLIENT}} client"
+      - echo "Building {{.CLIENT}} client from branch '{{.BRANCH}}'"
       - task: delete-client
         vars:
           CLIENT: '{{.CLIENT}}'
       - task: clone-client
         vars:
           CLIENT: '{{.CLIENT}}'
+          BRANCH: '{{.BRANCH}}'
       - task: build-client-{{.CLIENT}}
 
+  # Delete the specified client
   delete-client:
-    internal: true
-    desc: "Delete client source folder"
+    desc: "Delete client source folder depending on the CLI argument with CLIENT='', values: 'go', 'js'"
+    requires:
+      vars:
+        - name: CLIENT
+          enum: [go, js]
     cmds:
       - rm -rf crypto-broker-client-{{.CLIENT}}
 
+  # Internal tasks for building specified client
   clone-client:
     internal: true
     desc: "Clone client repository"
     cmds:
-      - git clone -b dev --single-branch https://github.com/open-crypto-broker/crypto-broker-client-{{.CLIENT}}.git
+      # clone the client using a specific branch
+      - git clone -b {{.BRANCH}} --single-branch https://github.com/open-crypto-broker/crypto-broker-client-{{.CLIENT}}.git
       # initialize protobuf submodule
       - |
        cd crypto-broker-client-{{.CLIENT}}/protobuf
@@ -73,11 +86,19 @@ tasks:
       - npm install
 
   ################# Build Crypto Broker Server ####################
+  # Public build task for Crypto Broker server.
+  # At first delete the source folder if it exists.
+  # Then the repo will be cloned and the submodules initialized.
+  # After that the Crypto Broker will be build.
   build-crypto-broker-server:
-    desc: "Clone and build Crypto Broker server"
+    desc: "Clone and build Crypto Broker server. The branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
     cmds:
       - task: delete-crypto-broker-server
       - task: clone-crypto-broker-server
+        vars:
+          BRANCH: '{{.BRANCH}}'
       - task: build-crypto-broker-server-internal
 
   delete-crypto-broker-server:
@@ -85,9 +106,12 @@ tasks:
     cmds:
       - rm -rf crypto-broker-server
 
+  # Internal tasks for building Crypto Broker server
   clone-crypto-broker-server:
+    desc: "Clone Crypto Broker server"
+    internal: true
     cmds:
-      - git clone -b dev --single-branch https://github.com/open-crypto-broker/crypto-broker-server.git
+      - git clone -b {{.BRANCH}} --single-branch https://github.com/open-crypto-broker/crypto-broker-server.git
       - task: init-protobuf-crypto-broker-server
 
   init-protobuf-crypto-broker-server:
@@ -105,8 +129,8 @@ tasks:
       - go build -o bin/cryptobroker-server cmd/server/server.go
 
   ################# Cleanup Tasks ####################
-  delete-cloned-repos:
-    desc: "Delete the cloned Crypto Broker server and the cloned client repositories"
+  delete-all:
+    desc: "Delete the Crypto Broker server and client source folders, the deployment folders, and also the deployment on Cloud Foundry"
     vars:
       ref: .CLIENTS
     cmds:
@@ -115,43 +139,66 @@ tasks:
         task: delete-client
         vars:
           CLIENT: '{{.ITEM}}'
-
-  delete-client-deployment-folder:
-    desc: "Delete the client deployment folder for Cloud Foundry specified with CLIENT='', values are 'go', 'js'"
-    requires:
-      vars:
-        - name: CLIENT
-          enum: [go, js]
-    cmds:
-      - rm -rf deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment
-
-  delete-cloned-repos-deployment:
-    desc: "Delete the cloned repositories, the deployment folders, and also the deployment on Cloud Foundry"
-    aliases: [delete-all]
-    vars:
-      ref: .CLIENTS
-    cmds:
-      - task: delete-cloned-repos
       - for: { var: CLIENTS }
-        task: delete-client-deployment-folder
+        task: delete-cf-deployment
         vars:
           CLIENT: '{{.ITEM}}'
-      - for: { var: CLIENTS }
-        cmd:
-          cf delete -r -f crypto-broker-{{.ITEM}}-client
 
   ################# End-to-End Tests ####################
+  # Public tasks for testing
+  test-hash-clients:
+    desc: "Build, run and perform hashing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+    cmds:
+      - task: build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
+      - task: test-hashing-clients
+
+  test-sign-clients:
+    desc: "Build, run and perform signing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+    cmds:
+      - task: build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
+      - task: test-sign-certificate-clients
+
+  test-clients:
+    desc: "Combine all tests for all clients in one task. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+    cmds:
+      - task: build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
+      - task: test-hashing-clients
+      - task: test-sign-certificate-clients
+
+  # Internal tasks for end-to-end tests
+  # Build Crypto Broker server and the clients for end-to-end tests
   build-dependencies:
-    desc: "Build all dependencies: clients and server"
+    desc: "Build all dependencies: clients and server, depending on the specified branch"
     internal: true
-    deps: [build-crypto-broker-server]
     vars:
       ref: .CLIENTS
     cmds:
+      - task: build-crypto-broker-server
+        vars:
+          BRANCH: '{{.BRANCH}}'
       - for: { var: CLIENTS }
         task: build-client
         vars:
           CLIENT: '{{.ITEM}}'
+          BRANCH: '{{.BRANCH}}'
 
   # Start/Stop Crypto Broker server
   start-crypto-broker-server:
@@ -241,47 +288,35 @@ tasks:
         openssl x509 -inform PEM -in tmp/certificate-responses/validities/tmp-cert-response-validity.pem -text
         rm -rf tmp/
 
-  # Public tasks for testing
-  test-hash-clients:
-    desc: "Build, run and perform hashing tests for all clients"
-    cmds:
-      - task: build-dependencies
-      - task: start-crypto-broker-server
-      - defer: { task: stop-crypto-broker-server }
-      - task: test-hashing-clients
-
-  test-sign-clients:
-    desc: "Build, run and perform signing tests for all clients"
-    cmds:
-      - task: build-dependencies
-      - task: start-crypto-broker-server
-      - defer: { task: stop-crypto-broker-server }
-      - task: test-sign-certificate-clients
-
-  test-clients:
-    desc: "Combine all tests for all clients in one task"
-    cmds:
-      - task: build-dependencies
-      - task: start-crypto-broker-server
-      - defer: { task: stop-crypto-broker-server }
-      - task: test-hashing-clients
-      - task: test-sign-certificate-clients
-
   ################# Cloud Foundry Deployment ####################
+  # Public tasks for Cloud Foundry deployment
+  # The deployment is done over several stages.
+  # First, the old deployment folder is deleted.
+  # Second, the Crypto Broker server is build.
+  # Third, the specified client is build.
+  # Fourth, the deployment repo is created.
+  # Fifth, the necessary files from the Crypto Broker are copied to the deployment folder.
+  # Sixth, the necessary files from the client are copied to the deployment folder.
+  # Seventh, the cf CLI is invoked and the app is pushed to Cloud Foundry.
   deploy-cf-cryptobroker:
-    desc: "Deploy to Cloud Foundry the Crypto Broker server and client specified with CLIENT='', values are 'go', 'js'"
-    deps: [build-crypto-broker-server]
+    desc: "Deploy to Cloud Foundry the Crypto Broker server and client specified with CLIENT='', values are 'go', 'js'. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
     requires:
       vars:
         - name: CLIENT
           enum: [go, js]
     cmds:
-      - task: delete-client-deployment-folder
+      - task: delete-deployment-folder
         vars:
           CLIENT: '{{.CLIENT}}'
+      - task: build-crypto-broker-server
+        vars:
+          BRANCH: '{{.BRANCH}}'
       - task: build-client
         vars:
           CLIENT: '{{.CLIENT}}'
+          BRANCH: '{{.BRANCH}}'
       - task: create-deployment-folder
         vars:
           CLIENT: '{{.CLIENT}}'
@@ -291,11 +326,30 @@ tasks:
       - task: copy-{{.CLIENT}}-client
       - cf push --random-route -f deployments/cloud-foundry/{{.CLIENT}}/manifest.yaml -p deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
 
+  delete-cf-deployment:
+    desc: "Delete the deployment folders and also on Cloud Foundry the deployment of Crypto Broker server and the specified client with CLIENT='', values are 'go', 'js'"
+    requires:
+      vars:
+        - name: CLIENT
+          enum: [go, js]
+    cmds:
+        - task: delete-deployment-folder
+          vars:
+            CLIENT: '{{.CLIENT}}'
+        - cf delete -r -f crypto-broker-{{.CLIENT}}-client
+
+  # Internal tasks for deployment to Cloud Foundry
   create-deployment-folder:
-    desc: "Create the deployment folder"
+    desc: "Create the deployment folder for Cloud Foundry"
     internal: true
     cmds:
       - mkdir deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment
+
+  delete-deployment-folder:
+    desc: "Delete the deployment folder for Cloud Foundry"
+    internal: true
+    cmds:
+      - rm -rf deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment
 
   copy-crypto-broker-server:
     desc: "Copy Crypto Broker server files to deployment folder"

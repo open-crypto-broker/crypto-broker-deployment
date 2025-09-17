@@ -213,9 +213,8 @@ tasks:
     cmds:
       - kill $(ps -e | awk '/cryptobroker/ {print $1}')
 
-  # Remove temporary test folder
-  remove-tmp-folder:
-    desc: "Remove temporary test folder"
+  delete-tmp-folder:
+    desc: "Delete temporary test folder"
     internal: true
     cmds:
       - rm -rf tmp/
@@ -255,7 +254,7 @@ tasks:
     vars:
       ref: .CLIENTS_PATH
     cmds:
-      - defer: { task: remove-tmp-folder }
+      - defer: { task: delete-tmp-folder }
       - for: { var: CLIENTS_PATH }
         task: test-sign-certificate
         vars:

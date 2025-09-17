@@ -22,7 +22,7 @@ Two example Manifests can be found inside the [deployments folder](deployments/c
 As it can be seen from the Manifest files, only two things are needed for deploying the Server as a sidecar:
 
 * The server's compiled binary, which can be found on the [Releases](https://github.com/open-crypto-broker/crypto-broker-server/releases) of the Crypto Broker Server repository. Please select the appropriate architecture  (default Cloud Foundry instance is `amd64`).
-* A `Profiles.yaml` file, which is [specified here](https://github.com/open-crypto-broker/crypto-broker-documentation/blob/main/spec/0002-profile-structure.md). The path to this file is then passed as an environment variable named `CRYPTO_BROKER_PROFILES_DIR` to the server. An example profile file is in the testing/profiles folder.
+* A `Profiles.yaml` file, which is [specified here](https://github.com/open-crypto-broker/crypto-broker-documentation/blob/main/spec/0002-profile-structure.md). The path to this file is then passed as an environment variable named `CRYPTO_BROKER_PROFILES_DIR` to the server. An [example profile](testing/profiles/Profiles.yaml) file is in the testing/profiles folder.
 
 For simplicity, in the example manifests both binary and profile are located in the same folder as the `manifest.yaml` file. That way, they can be easily accessed by the CLI when deploying to Cloud Foundry.
 
@@ -94,7 +94,7 @@ During these E2E tests the repositories are built and still available after test
 In order to clean everything up, the following task can be used:
 
 ```bash
-task clean-all-local
+task delete-all
 ```
 
 ## Support, Feedback, Contributing

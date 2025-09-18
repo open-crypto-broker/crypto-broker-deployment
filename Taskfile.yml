@@ -213,6 +213,12 @@ tasks:
     cmds:
       - kill $(ps -e | awk '/cryptobroker/ {print $1}')
 
+  delete-tmp-folder:
+    desc: "Delete temporary test folder"
+    internal: true
+    cmds:
+      - rm -rf tmp/
+
   # Hashing tests from the clients
   test-hashing-clients:
     desc: "Iterate hashing tests over all clients"
@@ -248,6 +254,7 @@ tasks:
     vars:
       ref: .CLIENTS_PATH
     cmds:
+      - defer: { task: delete-tmp-folder }
       - for: { var: CLIENTS_PATH }
         task: test-sign-certificate
         vars:
@@ -270,11 +277,11 @@ tasks:
         cmd:
           |
           echo "Test {{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}"
-          mkdir -p tmp/certificate-responses/{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}
+          TMP_DIR=tmp/certificate-responses/{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}
+          mkdir -p $TMP_DIR
           SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}} sign testing/certificates/test-csr/ecdsa_256.csr testing/certificates/test-ca/root-CA-{{.ITEM.SIGN_ALGO}}.pem testing/certificates/test-ca/root-CA-{{.ITEM.SIGN_ALGO}}-private-key.pem | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
-          printf "-----BEGIN CERTIFICATE-----\n$SIGNED_CERTIFICATE\n-----END CERTIFICATE-----\n" > tmp/certificate-responses/{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem
-          openssl x509 -inform PEM -in tmp/certificate-responses/{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem -text
-          rm -rf tmp/
+          printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem
+          openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem -text
 
   test-sign-certificate-validity:
     desc: "Test profile with different validities"
@@ -282,11 +289,11 @@ tasks:
     cmds:
       - |
         echo "Test different validities"
-        mkdir -p tmp/certificate-responses/validities
+        TMP_DIR=tmp/certificate-responses/validities
+        mkdir -p $TMP_DIR
         SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-validities sign testing/certificates/test-csr/ecdsa_256.csr testing/certificates/test-ca/root-CA-ecdsa.pem testing/certificates/test-ca/root-CA-ecdsa-private-key.pem | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
-        printf "-----BEGIN CERTIFICATE-----\n$SIGNED_CERTIFICATE\n-----END CERTIFICATE-----\n" > tmp/certificate-responses/validities/tmp-cert-response-validity.pem
-        openssl x509 -inform PEM -in tmp/certificate-responses/validities/tmp-cert-response-validity.pem -text
-        rm -rf tmp/
+        printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-response-validity.pem
+        openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-response-validity.pem -text
 
   ################# Cloud Foundry Deployment ####################
   # Public tasks for Cloud Foundry deployment

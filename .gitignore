@@ -16,3 +16,6 @@ crypto-broker-*-*/
 
 # Do not include deployment artifacts
 deployments/cloud-foundry/**/*-deployment/
+
+# Ignore temporary folder
+tmp/

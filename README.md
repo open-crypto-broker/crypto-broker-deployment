@@ -4,6 +4,19 @@ This repository features two purposes.
 On the one hand it describes how the Crypto Broker Server and the different Crypto Broker Clients can be deployed to Cloud Foundry and Kubernetes.
 On the other hand it can perform end-to-end tests which simulate the usage of the Crypto Broker Server and the different Crypto Broker Clients from a user perspective.
 
+## Cross Compilation and Branch Support
+
+For several tasks it is possible to specify for which Operating System (OS) and Architecture (ARCH) the software shall be build.
+For a list of supported operating systems and architectures refer to the [Golang variables](https://github.com/golang/go/blob/master/src/internal/syslist/syslist.go).
+Additionally, for some tasks a BRANCH variable can be specified in order to build the software from a specific branch.
+For a list of tasks which support these options, issue the task overview with:
+
+```bash
+task
+# or
+task -l
+```
+
 ## Deployment
 
 ### Cloud Foundry

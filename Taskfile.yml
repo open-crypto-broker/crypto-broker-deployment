@@ -289,6 +289,10 @@ tasks:
         task: test-sign-certificate-validity
         vars:
           CLIENT_PATH: '{{.ITEM}}'
+      - for: { var: CLIENTS_PATH }
+        task: test-sign-certificate-custom-subject
+        vars:
+          CLIENT_PATH: '{{.ITEM}}'
 
   test-sign-certificate:
     desc: "Iterate over ECDSA/RSA with SHA2 algorithms"
@@ -304,8 +308,10 @@ tasks:
           |
           echo "Test {{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}"
           TMP_DIR=tmp/certificate-responses/{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}
+          TEST_CA_DIR=testing/certificates/test-ca
+          TEST_CSR_DIR=testing/certificates/test-csr
           mkdir -p $TMP_DIR
-          SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}} sign testing/certificates/test-csr/ecdsa_256.csr testing/certificates/test-ca/root-CA-{{.ITEM.SIGN_ALGO}}.pem testing/certificates/test-ca/root-CA-{{.ITEM.SIGN_ALGO}}-private-key.pem | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
+          SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}} sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}.pem $TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}-private-key.pem | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
           printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem
           openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem -text
 
@@ -316,10 +322,26 @@ tasks:
       - |
         echo "Test different validities"
         TMP_DIR=tmp/certificate-responses/validities
+        TEST_CA_DIR=testing/certificates/test-ca
+        TEST_CSR_DIR=testing/certificates/test-csr
         mkdir -p $TMP_DIR
-        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-validities sign testing/certificates/test-csr/ecdsa_256.csr testing/certificates/test-ca/root-CA-ecdsa.pem testing/certificates/test-ca/root-CA-ecdsa-private-key.pem | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
+        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-validities sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-ecdsa.pem $TEST_CA_DIR/root-CA-ecdsa-private-key.pem | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
         printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-response-validity.pem
         openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-response-validity.pem -text
+
+  test-sign-certificate-custom-subject:
+    desc: "Test custom subject with CLI API"
+    internal: true
+    cmds:
+      - |
+        echo "Test custom subject with CLI API"
+        TMP_DIR=tmp/certificate-responses/validities
+        TEST_CA_DIR=testing/certificates/test-ca
+        TEST_CSR_DIR=testing/certificates/test-csr
+        mkdir -p $TMP_DIR
+        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-ecdsa-sha256 sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-ecdsa.pem $TEST_CA_DIR/root-CA-ecdsa-private-key.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
+        printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-custom-subject.pem
+        openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-custom-subject.pem -text
 
   ################# Cloud Foundry Deployment ####################
   # Public tasks for Cloud Foundry deployment

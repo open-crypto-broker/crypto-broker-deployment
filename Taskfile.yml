@@ -25,11 +25,12 @@ vars:
   # Variables for the SignCertificate tests
   SIGN_ALGO: ["ecdsa", "rsa"]
   HASH_ALGO: ["sha256", "sha384", "sha512"]
+  # GNU grep support for macOS
   GREP_CMD:
     sh: |
       case "$(uname)" in
         Darwin*) echo ggrep ;;
-        *) echo grep ;;
+        Linux*) echo grep ;;
       esac
 
 tasks:
@@ -96,20 +97,7 @@ tasks:
     cmds:
       - npm install
 
-  # Internal tasks for installing/removing GNU Grep on MacOS
-  install-gnu-grep:
-    internal: true
-    preconditions:
-      - test "$(uname)" = "Darwin"
-    cmds:
-      - brew install grep
-   
-  remove-gnu-grep:
-    internal: true
-    preconditions:
-      - test "$(uname)" = "Darwin"
-    cmds:
-      - brew uninstall grep   
+
 
   ################# Build Crypto Broker Server ####################
   # Public build task for Crypto Broker server.
@@ -191,8 +179,6 @@ tasks:
           ARCH: '{{.ARCH}}'
       - task: start-crypto-broker-server
       - defer: { task: stop-crypto-broker-server }
-      - task: install-gnu-grep
-      - defer: { task: remove-gnu-grep }
       - task: test-hashing-clients
 
   test-sign-clients:
@@ -209,8 +195,6 @@ tasks:
           ARCH: '{{.ARCH}}'
       - task: start-crypto-broker-server
       - defer: { task: stop-crypto-broker-server }
-      - task: install-gnu-grep
-      - defer: { task: remove-gnu-grep }
       - task: test-sign-certificate-clients
 
   test-clients:
@@ -227,10 +211,21 @@ tasks:
           ARCH: '{{.ARCH}}'
       - task: start-crypto-broker-server
       - defer: { task: stop-crypto-broker-server }
-      - task: install-gnu-grep
-      - defer: { task: remove-gnu-grep }
       - task: test-hashing-clients
       - task: test-sign-certificate-clients
+
+  # Tasks for installing/removing GNU grep on macOS
+  macos-install-gnu-grep:
+    desc: "Install GNU grep on macOS"
+    platforms: ["darwin"]
+    cmds:
+      - brew install grep
+
+  macos-remove-gnu-grep:
+    desc: "Remove GNU grep from macOS"
+    platforms: ["darwin"]
+    cmds:
+      - brew uninstall grep
 
   # Internal tasks for end-to-end tests
   # Build Crypto Broker server and the clients for end-to-end tests

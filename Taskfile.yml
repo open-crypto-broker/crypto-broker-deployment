@@ -25,6 +25,13 @@ vars:
   # Variables for the SignCertificate tests
   SIGN_ALGO: ["ecdsa", "rsa"]
   HASH_ALGO: ["sha256", "sha384", "sha512"]
+  # GNU grep support depending on OS
+  GREP_CMD:
+    sh: |
+      case "$(uname)" in
+        Darwin*) echo ggrep ;;
+        Linux*) echo grep ;;
+      esac
 
 tasks:
   ################# Build Crypto Broker Client ####################
@@ -205,6 +212,19 @@ tasks:
       - task: test-hashing-clients
       - task: test-sign-certificate-clients
 
+  # Tasks for installing/removing GNU grep on macOS
+  macos-install-gnu-grep:
+    desc: "Install GNU grep on macOS"
+    platforms: ["darwin"]
+    cmds:
+      - brew install grep
+
+  macos-remove-gnu-grep:
+    desc: "Remove GNU grep from macOS"
+    platforms: ["darwin"]
+    cmds:
+      - brew uninstall grep
+
   # Internal tasks for end-to-end tests
   # Build Crypto Broker server and the clients for end-to-end tests
   build-dependencies:
@@ -267,7 +287,7 @@ tasks:
         cmd:
           |
           echo "Test {{.KEY}}"
-          HASH_RESPONSE=$({{.CLIENT_PATH}} --profile={{.KEY}} hash "Welcome CryptoBroker" | grep -oP '\"hashValue\":\s?"\K[^"]+')
+          HASH_RESPONSE=$({{.CLIENT_PATH}} --profile={{.KEY}} hash "Welcome CryptoBroker" | {{.GREP_CMD}} -oP '\"hashValue\":\s?"\K[^"]+')
           if [[ $HASH_RESPONSE != {{.ITEM}} ]] then
             echo "Error: Hash values do not match!"
             exit 1
@@ -311,7 +331,7 @@ tasks:
           TEST_CA_DIR=testing/certificates/test-ca
           TEST_CSR_DIR=testing/certificates/test-csr
           mkdir -p $TMP_DIR
-          SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}} sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}.pem $TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}-private-key.pem | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
+          SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}} sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}.pem $TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}-private-key.pem | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
           printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem
           openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem -text
 
@@ -325,7 +345,7 @@ tasks:
         TEST_CA_DIR=testing/certificates/test-ca
         TEST_CSR_DIR=testing/certificates/test-csr
         mkdir -p $TMP_DIR
-        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-validities sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-ecdsa.pem $TEST_CA_DIR/root-CA-ecdsa-private-key.pem | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
+        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-validities sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-ecdsa.pem $TEST_CA_DIR/root-CA-ecdsa-private-key.pem | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
         printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-response-validity.pem
         openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-response-validity.pem -text
 
@@ -339,7 +359,7 @@ tasks:
         TEST_CA_DIR=testing/certificates/test-ca
         TEST_CSR_DIR=testing/certificates/test-csr
         mkdir -p $TMP_DIR
-        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-ecdsa-sha256 sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-ecdsa.pem $TEST_CA_DIR/root-CA-ecdsa-private-key.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | grep -oP '\"signedCertificate\":\s?"\K[^"]+')
+        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-ecdsa-sha256 sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-ecdsa.pem $TEST_CA_DIR/root-CA-ecdsa-private-key.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
         printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-custom-subject.pem
         openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-custom-subject.pem -text
 

@@ -25,7 +25,7 @@ vars:
   # Variables for the SignCertificate tests
   SIGN_ALGO: ["ecdsa", "rsa"]
   HASH_ALGO: ["sha256", "sha384", "sha512"]
-  # GNU grep support for macOS
+  # GNU grep support depending on OS
   GREP_CMD:
     sh: |
       case "$(uname)" in
@@ -96,8 +96,6 @@ tasks:
     dir: crypto-broker-client-js/
     cmds:
       - npm install
-
-
 
   ################# Build Crypto Broker Server ####################
   # Public build task for Crypto Broker server.

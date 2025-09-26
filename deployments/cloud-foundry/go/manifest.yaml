@@ -17,3 +17,13 @@ applications:
         process_types:
           - web
         command: 'CRYPTO_BROKER_PROFILES_DIR=$PWD ./cryptobroker-server'
+      - name: crypto-broker-client-1
+        health-check-type: process
+        process_types:
+          - web
+        command: './go-client-cli --profile=sign-certificate-ecdsa-sha512 sign certificates/test-csr/ecdsa_256.csr certificates/test-ca/root-CA-ecdsa.pem certificates/test-ca/root-CA-ecdsa-private-key.pem'
+      - name: crypto-broker-client-2
+        health-check-type: process
+        process_types:
+          - web
+        command: './go-client-cli --profile=sign-certificate-rsa-sha512 sign certificates/test-csr/ecdsa_256.csr certificates/test-ca/root-CA-rsa.pem certificates/test-ca/root-CA-rsa-private-key.pem'

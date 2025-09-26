@@ -43,8 +43,8 @@ tasks:
     desc: "Build a client depending on the CLI argument with CLIENT='', values: 'go', 'js'. Also the branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS | default "linux"}}'
-      ARCH: '{{.ARCH | default "amd64"}}'
+      OS: '{{.OS}}'
+      ARCH: '{{.ARCH}}'
     requires:
       vars:
         - name: CLIENT
@@ -106,8 +106,8 @@ tasks:
     desc: "Clone and build Crypto Broker server. The branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS | default "linux"}}'
-      ARCH: '{{.ARCH | default "amd64"}}'
+      OS: '{{.OS}}'
+      ARCH: '{{.ARCH}}'
     cmds:
       - task: delete-crypto-broker-server
       - task: clone-crypto-broker-server
@@ -164,11 +164,11 @@ tasks:
   ################# End-to-End Tests ####################
   # Public tasks for testing
   test-hash-clients:
-    desc: "Build, run and perform hashing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    desc: "Build, run and perform hashing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS | default "linux"}}'
-      ARCH: '{{.ARCH | default "amd64"}}'
+      OS: '{{.OS}}'
+      ARCH: '{{.ARCH}}'
     cmds:
       - task: build-dependencies
         vars:
@@ -180,11 +180,11 @@ tasks:
       - task: test-hashing-clients
 
   test-sign-clients:
-    desc: "Build, run and perform signing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    desc: "Build, run and perform signing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS | default "linux"}}'
-      ARCH: '{{.ARCH | default "amd64"}}'
+      OS: '{{.OS}}'
+      ARCH: '{{.ARCH}}'
     cmds:
       - task: build-dependencies
         vars:
@@ -196,11 +196,11 @@ tasks:
       - task: test-sign-certificate-clients
 
   test-clients:
-    desc: "Combine all tests for all clients in one task. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    desc: "Combine all tests for all clients in one task. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS | default "linux"}}'
-      ARCH: '{{.ARCH | default "amd64"}}'
+      OS: '{{.OS}}'
+      ARCH: '{{.ARCH}}'
     cmds:
       - task: build-dependencies
         vars:
@@ -398,6 +398,9 @@ tasks:
       - task: copy-crypto-broker-server
         vars:
           CLIENT: '{{.CLIENT}}'
+      - task: copy-test-certificates
+        vars:
+          CLIENT: '{{.CLIENT}}'
       - task: copy-{{.CLIENT}}-client
       - cf push --random-route -f deployments/cloud-foundry/{{.CLIENT}}/manifest.yaml -p deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
 
@@ -432,6 +435,12 @@ tasks:
     cmds:
       - cp crypto-broker-server/bin/cryptobroker-server deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
       - cp testing/profiles/Profiles.yaml deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+
+  copy-test-certificates:
+    desc: "Copy test CSR and test CA certificate and CA private key to Cloud Foundry"
+    internal: true
+    cmds:
+      - cp -r testing/certificates deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
 
   # Go specific task
   copy-go-client:

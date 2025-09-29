@@ -300,7 +300,7 @@ tasks:
     vars:
       ref: .CLIENTS_PATH
     cmds:
-      - defer: { task: delete-tmp-folder }
+      - task: delete-tmp-folder
       - for: { var: CLIENTS_PATH }
         task: test-sign-certificate
         vars:
@@ -331,7 +331,7 @@ tasks:
           TEST_CA_DIR=testing/certificates/test-ca
           TEST_CSR_DIR=testing/certificates/test-csr
           mkdir -p $TMP_DIR
-          SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}} sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}.pem $TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}-private-key.pem | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
+          SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}} sign $TEST_CSR_DIR/test-client.csr $TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}.pem $TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}-private-key.pem | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
           printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem
           openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem -text
 
@@ -345,7 +345,7 @@ tasks:
         TEST_CA_DIR=testing/certificates/test-ca
         TEST_CSR_DIR=testing/certificates/test-csr
         mkdir -p $TMP_DIR
-        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-validities sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-ecdsa.pem $TEST_CA_DIR/root-CA-ecdsa-private-key.pem | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
+        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-validities sign $TEST_CSR_DIR/test-client.csr $TEST_CA_DIR/root-CA-ecdsa.pem $TEST_CA_DIR/root-CA-ecdsa-private-key.pem | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
         printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-response-validity.pem
         openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-response-validity.pem -text
 
@@ -355,11 +355,11 @@ tasks:
     cmds:
       - |
         echo "Test custom subject with CLI API"
-        TMP_DIR=tmp/certificate-responses/validities
+        TMP_DIR=tmp/certificate-responses/subject
         TEST_CA_DIR=testing/certificates/test-ca
         TEST_CSR_DIR=testing/certificates/test-csr
         mkdir -p $TMP_DIR
-        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-ecdsa-sha256 sign $TEST_CSR_DIR/ecdsa_256.csr $TEST_CA_DIR/root-CA-ecdsa.pem $TEST_CA_DIR/root-CA-ecdsa-private-key.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
+        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-ecdsa-sha256 sign $TEST_CSR_DIR/test-client.csr $TEST_CA_DIR/root-CA-ecdsa.pem $TEST_CA_DIR/root-CA-ecdsa-private-key.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
         printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-custom-subject.pem
         openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-custom-subject.pem -text
 

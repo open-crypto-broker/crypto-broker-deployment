@@ -1,12 +1,11 @@
 applications:
   - name: crypto-broker-js-client
-    command: 'node dist/cli.js --profile=KAT_SHA3_512 hash "Welcome CryptoBroker"'
+    command: 'node dist/cli.js --loop 10 --profile=KAT_SHA3_512 hash "Welcome CryptoBroker"'
     disk_quota: 256M
     instances: 1
     memory: 128M
     env:
       HUSKY: 0
-      DOCKER_DEPLOYED: true
     buildpacks:
       - nodejs_buildpack
       - binary_buildpack
@@ -23,9 +22,9 @@ applications:
         health-check-type: process
         process_types:
           - web
-        command: 'node dist/cli.js --profile=sign-certificate-ecdsa-sha512 sign certificates/test-csr/test-client.csr certificates/test-ca/root-CA-ecdsa.pem certificates/test-ca/root-CA-ecdsa-private-key.pem'
+        command: 'node dist/cli.js --loop 20 --profile=sign-certificate-ecdsa-sha512 sign certificates/test-csr/test-client.csr certificates/test-ca/root-CA-ecdsa.pem certificates/test-ca/root-CA-ecdsa-private-key.pem'
       - name: crypto-broker-client-2
         health-check-type: process
         process_types:
           - web
-        command: 'node dist/cli.js --profile=sign-certificate-rsa-sha512 sign certificates/test-csr/test-client.csr certificates/test-ca/root-CA-rsa.pem certificates/test-ca/root-CA-rsa-private-key.pem'
+        command: 'node dist/cli.js --loop 30 --profile=sign-certificate-rsa-sha512 sign certificates/test-csr/test-client.csr certificates/test-ca/root-CA-rsa.pem certificates/test-ca/root-CA-rsa-private-key.pem'

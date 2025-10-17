@@ -1,0 +1,14 @@
+services:
+  crypto-broker-server:
+    container_name: crypto-broker-server
+    image: ghcr.io/open-crypto-broker/server:latest
+    build:
+      dockerfile: Dockerfile
+      context: ../../crypto-broker-server
+      args:
+        CRYPTO_BROKER_PROFILES_DIR: example-profiles
+    environment:
+      - CRYPTO_BROKER_PROFILES_DIR=/app/profiles
+    restart: always
+    volumes:
+      - shared_data:/tmp

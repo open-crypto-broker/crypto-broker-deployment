@@ -1,0 +1,14 @@
+services:
+  test-app-go:
+    container_name: test-app-go
+    build:
+      dockerfile: cli/Dockerfile
+      context: ../../crypto-broker-client-go
+    restart: always
+    depends_on:
+      - crypto-broker-server
+    volumes:
+      - shared_data:/tmp
+volumes:
+  shared_data:
+

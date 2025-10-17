@@ -1,0 +1,14 @@
+services:
+  test-app-js:
+    container_name: test-app-js
+    build:
+      dockerfile: Dockerfile
+      context: ../../crypto-broker-client-js
+    restart: always
+    depends_on:
+      - crypto-broker-server
+    volumes:
+      - shared_data:/tmp
+volumes:
+  shared_data:
+

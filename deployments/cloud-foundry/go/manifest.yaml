@@ -1,11 +1,9 @@
 applications:
   - name: crypto-broker-go-client
-    command: './test-app hash "Welcome CryptoBroker"'
+    command: './go-client-cli --loop 10 --profile=KAT_SHA3_512 hash "Welcome CryptoBroker"'
     disk_quota: 256M
     instances: 1
     memory: 128M
-    env:
-      DOCKER_DEPLOYED: true
     buildpacks:
       - binary_buildpack
     health-check-type: process
@@ -16,4 +14,14 @@ applications:
         health-check-type: process
         process_types:
           - web
-        command: 'CRYPTO_BROKER_PROFILES_DIR=$PWD ./server'
+        command: 'CRYPTO_BROKER_PROFILES_DIR=$PWD ./cryptobroker-server'
+      - name: crypto-broker-client-1
+        health-check-type: process
+        process_types:
+          - web
+        command: './go-client-cli --loop 20 --profile=sign-certificate-ecdsa-sha512 sign --csr=certificates/test-csr/test-client.csr --caCert=certificates/test-ca/root-CA-ecdsa.pem --caKey=certificates/test-ca/root-CA-ecdsa-private-key.pem'
+      - name: crypto-broker-client-2
+        health-check-type: process
+        process_types:
+          - web
+        command: './go-client-cli --loop 30 --profile=sign-certificate-rsa-sha512 sign --csr=certificates/test-csr/test-client.csr --caCert=certificates/test-ca/root-CA-rsa.pem --caKey=certificates/test-ca/root-CA-rsa-private-key.pem'

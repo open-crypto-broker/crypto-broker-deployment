@@ -8,37 +8,37 @@ namespace: crypto-broker
 # sets the number of replicas, originally set to 1
 replicaCount: 1
 
-# Connection type configuration (http or grpc)
+# Path to crypto profiles
 profilesDir: /app/profiles
-# This makes the app aware that is running on Docker and makes it run on a loop
-dockerDeployed: "True"
 
-# This is for the secretes for pulling an image from a private repository
+# This is for the secrets for pulling an image from a private repository
 # imagePullSecrets: []
 
 clientApp:
-  name: client-app
+  name: client-app-js
   image:
-    name: "TODO: add new docker repository"
+    name: ghcr.io/open-crypto-broker/test-app-js
     tag: latest
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   argHash:
+    - --loop=1000
     - --profile=Default
     - hash
     - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
   argSign:
+    - --loop=1000
     - --profile=Default
     - sign
-    - "/certificates/end-entity.csr"
-    - "/certificates/ca_cert.pem"
-    - "/certificates/private_key.pem"
+    - --csr=/certificates/end-entity.csr
+    - --caCert=/certificates/ca_cert.pem
+    - --caKey=/certificates/private_key.pem
 
 serverApp:
   name: server-app
   image:
-    name: "TODO: add new docker repository"
+    name: ghcr.io/open-crypto-broker/server
     tag: latest
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
 
 volumes:
   - name: socket-volume
@@ -53,19 +53,18 @@ volumeMounts:
   - name: certs-volume
     mountPath: /certificates
 
-
 imageCredentials:
-  # Set to true to create the image pull secret automatically by the chart
-  create: true
-  secretName: artifactory-secret
-  registry: "TODO: add new docker repository"
+  # Adjust this if any private image should be pulled automatically by the chart
+  create: false
+  secretName: example-secret
+  registry: "TODO: add docker repository"
   username: ""             # Placeholder, will be overridden with enviroment variable
   password: ""             # Placeholder, will be overridden with enviroment variable
   email: ""                # Placeholder, will be overridden with enviroment variable
 
 serviceAccount:
   # Specifies whether a service account should be created
-  create: true
+  create: false
   # Automatically mount a ServiceAccount's API credentials
   automount: true
   # The name of the service account to use.
@@ -73,7 +72,6 @@ serviceAccount:
   name: ""
 
 podSecurityContext: {}
-  # fsGroup: 2000
 
 securityContext:
   capabilities:

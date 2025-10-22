@@ -16,7 +16,7 @@ services:
       - --loop=1000
       - --profile=Default
       - hash
-      - "Hello Cryptobroker!"
+      - Hello Cryptobroker!
   test-app-go-sign:
     <<: *app-base
     container_name: test-app-go-sign

@@ -1,14 +1,35 @@
+x-test-app-go: &app-base
+  build:
+    dockerfile: Dockerfile
+    context: ../../crypto-broker-client-go/cli
+  restart: always
+  depends_on:
+    - crypto-broker-server
+  volumes:
+    - shared_data:/tmp
+
 services:
-  test-app-go:
-    container_name: test-app-go
-    build:
-      dockerfile: cli/Dockerfile
-      context: ../../crypto-broker-client-go
-    restart: always
-    depends_on:
-      - crypto-broker-server
+  test-app-go-hash:
+    <<: *app-base
+    container_name: test-app-go-hash
+    command:
+      - --loop=1000
+      - --profile=Default
+      - hash
+      - "Hello Cryptobroker!"
+  test-app-go-sign:
+    <<: *app-base
+    container_name: test-app-go-sign
     volumes:
+      - ../../testing/certificates:/certificates:ro
       - shared_data:/tmp
+    command:
+      - --loop=1000
+      - --profile=Default
+      - sign
+      - --csr=/certificates/test-csr/test-client.csr
+      - --caCert=/certificates/test-ca/root-CA-ecdsa.pem
+      - --caKey=/certificates/test-ca/root-CA-ecdsa-private-key.pem
 volumes:
   shared_data:
 

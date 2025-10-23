@@ -48,7 +48,7 @@ task deploy-cf-cryptobroker CLIENT=go
 task deploy-cf-cryptobroker CLIENT=js
 ```
 
-### Kubernetes
+### Docker-Compose and Kubernetes
 
 #### Kubernetes Setup
 
@@ -56,14 +56,26 @@ For deployment in Kubernetes, Kubernetes and Helm must be installed in terminal.
 
 Please, DO NOT share this file with anybody or upload it anywhere. This file should only be stored locally in your computer and will be read each time you run a `task` command.
 
-#### Kubernetes Deployment
+#### Docker-Compose and Kubernetes Deployment
 
+For a local docker deployment first the Crypto Broker server and the respective clients must be build with the build tasks (see `task build-client` and `task build-crypto-broker-server`).
+After that the docker-compose files in the `deployments/docker` folder can be used to build a local docker-compose.
+The tasks to build it are as follows:
+
+```shell
+task docker-compose-build
+task docker-compose-deploy
+```
+
+The `task docker-compose-deploy` will automatically start the compose setup and the output is logged to console.
+In order to stop the docker-compose deployment exit it with `ctrl+c`.
+
+These local docker images can be used to be loaded into [minikube](https://minikube.sigs.k8s.io/docs/) and to start with that the Kubernetes cluster.
 For deployment, simply run the following command (or equivalent directly from Taskfile):
 
 ```shell
+task minikube-images
 task kube-deploy
-# or
-task deploy
 ```
 
 This will deploy the Helm chart `kube-broker` in the `crypto-broker` namespace in your local kubernetes cluster. The cluster will spin up a server which listens on the Unix Socket and two clients that will send periodically requests (hash and sign) to the server.
@@ -74,8 +86,6 @@ To uninstall the Helm deployment run:
 
 ```shell
 task kube-destroy
-# or
-task destroy
 ```
 
 ## End-to-End (E2E) Testing

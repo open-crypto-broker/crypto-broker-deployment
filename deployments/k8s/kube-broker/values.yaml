@@ -19,7 +19,7 @@ clientApp:
   image:
     name: ghcr.io/open-crypto-broker/test-app-js
     tag: latest
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   argHash:
     - --loop=1000
     - --profile=Default
@@ -38,7 +38,7 @@ serverApp:
   image:
     name: ghcr.io/open-crypto-broker/server
     tag: latest
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
 
 volumes:
   - name: socket-volume

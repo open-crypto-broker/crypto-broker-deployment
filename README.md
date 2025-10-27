@@ -71,10 +71,12 @@ The `task docker-compose-deploy` will automatically start the compose setup and 
 In order to stop the docker-compose deployment exit it with `ctrl+c`.
 
 These local docker images can be used to be loaded into [minikube](https://minikube.sigs.k8s.io/docs/) and to start with that the Kubernetes cluster.
+Make sure that minikube is up and running (e.g. issue `minikube start`).
 For deployment, simply run the following command (or equivalent directly from Taskfile):
 
 ```shell
 task minikube-images
+# if kube-deploy does not work, make sure that minikube is started
 task kube-deploy
 ```
 

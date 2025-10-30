@@ -485,7 +485,12 @@ tasks:
   docker-compose-build:
     desc: "Build docker images"
     dir: deployments/docker/
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
     cmds:
+      - task: build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
       - docker-compose -f server.yml -f test_app_js.yml build
 
   docker-compose-deploy:

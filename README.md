@@ -58,9 +58,9 @@ Please, DO NOT share this file with anybody or upload it anywhere. This file sho
 
 #### Docker-Compose and Kubernetes Deployment
 
-For a local docker deployment first the Crypto Broker server and the respective clients must be build with the build tasks (see `task build-client` and `task build-crypto-broker-server`).
-After that the docker-compose files in the `deployments/docker` folder can be used to build a local docker-compose.
-The tasks to build it are as follows:
+For a local docker deployment the following tasks can be used.
+The first task will clone and build the Crypto Broker server and the clients.
+The docker-compose files in the `deployments/docker` folder are then used to build the docker images.
 
 ```shell
 task docker-compose-build

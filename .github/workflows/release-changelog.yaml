@@ -48,4 +48,4 @@ jobs:
           # create a git tag
           git tag v"$VERSION"
           # push to main
-          git push origin main --tags
+          git push origin/main --tags

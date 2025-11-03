@@ -22,9 +22,32 @@ vars:
       KAT_SHA3_512:
         14894112f30f982c01e1de386ee9ca60bff70469d9fd249a5f9fbfc66a29c37c76b3fb15c294a6b6d3a1609fa59ca14194e2bc9da16610fa7f1a10dad38d628e,
       }
-  # Variables for the SignCertificate tests
-  SIGN_ALGO: ["ecdsa", "rsa"]
-  HASH_ALGO: ["sha256", "sha384", "sha512"]
+  # Profiles, CSRs, and Issuer certificates for the SignCertificate tests in the Crypto Broker server
+  PROFILES: [
+    "Default",
+    "KSA-MODERATE-2020",
+    "KSA-ADVANCED-2020",
+    "FIPS-140-3-Baseline",
+    "FIPS-140-3-Medium",
+    "FIPS-140-3-Strict"
+  ]
+  CSR: [
+    "csr-rsa-2048.csr",
+    "csr-rsa-3072.csr",
+    "csr-rsa-4096.csr",
+    "csr-rsa-8192.csr",
+    "csr-rsa-15380.csr",
+    "csr-nist-secp224r1.csr",
+    "csr-nist-secp256k1.csr",
+    "csr-nist-secp384r1.csr",
+    "csr-nist-secp521r1.csr"
+  ]
+  ISSUER: [
+    "test-CA-rsa-3072.pem",
+    "test-CA-nist-secp256k1.pem",
+    "test-CA-nist-secp384r1.pem",
+    "test-CA-nist-secp521r1.pem"
+  ]
   # GNU grep support depending on OS
   GREP_CMD:
     sh: |
@@ -259,12 +282,6 @@ tasks:
     cmds:
       - kill $(ps -e | awk '/cryptobroker/ {print $1}')
 
-  delete-tmp-folder:
-    desc: "Delete temporary test folder"
-    internal: true
-    cmds:
-      - rm -rf tmp/
-
   # Hashing tests from the clients
   test-hashing-clients:
     desc: "Iterate hashing tests over all clients"
@@ -300,58 +317,49 @@ tasks:
     vars:
       ref: .CLIENTS_PATH
     cmds:
-      - task: delete-tmp-folder
       - for: { var: CLIENTS_PATH }
-        task: test-sign-certificate
-        vars:
-          CLIENT_PATH: '{{.ITEM}}'
-      - for: { var: CLIENTS_PATH }
-        task: test-sign-certificate-validity
-        vars:
-          CLIENT_PATH: '{{.ITEM}}'
-      - for: { var: CLIENTS_PATH }
-        task: test-sign-certificate-custom-subject
+        task: test-sign-profiles
         vars:
           CLIENT_PATH: '{{.ITEM}}'
 
-  test-sign-certificate:
-    desc: "Iterate over ECDSA/RSA with SHA2 algorithms"
+  test-sign-profiles:
+    desc: "Test certificate signing command with all profiles"
+    vars:
+      ref: .PROFILES
+    cmds:
+      - for: { var: PROFILES }
+        task: test-sign-ca-csrs
+        vars:
+          PROFILE: '{{.ITEM}}'
+          CLIENT_PATH: '{{.CLIENT_PATH}}'
+
+  test-sign-ca-csrs:
+    desc: "Test each CSR with each CA-issuer certificate and key"
     internal: true
+    silent: true
     cmds:
       - for:
           matrix:
-            SIGN_ALGO:
-              ref: .SIGN_ALGO
-            HASH_ALGO:
-              ref: .HASH_ALGO
+            CSR:
+              ref: .CSR
+            ISSUER:
+              ref: .ISSUER
         cmd:
           |
-          echo "Test {{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}"
-          TMP_DIR=tmp/certificate-responses/{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}
           TEST_CA_DIR=testing/certificates/test-ca
           TEST_CSR_DIR=testing/certificates/test-csr
-          mkdir -p $TMP_DIR
-          SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}} sign --csr=$TEST_CSR_DIR/test-client.csr --caCert=$TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}.pem --caKey=$TEST_CA_DIR/root-CA-{{.ITEM.SIGN_ALGO}}-private-key.pem | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
-          printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem
-          openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-response-{{.ITEM.SIGN_ALGO}}-{{.ITEM.HASH_ALGO}}.pem -text
+          printf "Testing SignCertificate API\nProfile: \"{{.PROFILE}}\"\nCSR: \"{{.ITEM.CSR}}\"\nIssuer: \"{{.ITEM.ISSUER}}\"\n"
+          RESPONSE=$({{.CLIENT_PATH}} --profile={{.PROFILE}} sign --csr=$TEST_CSR_DIR/{{.ITEM.CSR}} --caCert=$TEST_CA_DIR/cert-{{.ITEM.ISSUER}} --caKey=$TEST_CA_DIR/{{.ITEM.ISSUER}})
+          if echo "$RESPONSE" | grep -q 'Sign Response'; then
+            echo "✅ Success"
+          else
+            echo "❌ Failure"
+          fi
+          printf "\n"
 
-  test-sign-certificate-validity:
-    desc: "Test profile with different validities"
-    internal: true
-    cmds:
-      - |
-        echo "Test different validities"
-        TMP_DIR=tmp/certificate-responses/validities
-        TEST_CA_DIR=testing/certificates/test-ca
-        TEST_CSR_DIR=testing/certificates/test-csr
-        mkdir -p $TMP_DIR
-        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-validities sign --csr=$TEST_CSR_DIR/test-client.csr --caCert=$TEST_CA_DIR/root-CA-ecdsa.pem --caKey=$TEST_CA_DIR/root-CA-ecdsa-private-key.pem | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
-        printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-response-validity.pem
-        openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-response-validity.pem -text
-
+  # ToDo: Run this separate from the main sing certificate test
   test-sign-certificate-custom-subject:
     desc: "Test custom subject with CLI API"
-    internal: true
     cmds:
       - |
         echo "Test custom subject with CLI API"
@@ -359,7 +367,7 @@ tasks:
         TEST_CA_DIR=testing/certificates/test-ca
         TEST_CSR_DIR=testing/certificates/test-csr
         mkdir -p $TMP_DIR
-        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=sign-certificate-ecdsa-sha256 sign --csr=$TEST_CSR_DIR/test-client.csr --caCert=$TEST_CA_DIR/root-CA-ecdsa.pem --caKey=$TEST_CA_DIR/root-CA-ecdsa-private-key.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
+        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=Default sign --csr=$TEST_CSR_DIR/csr-nist-secp384r1.csr --caCert=$TEST_CA_DIR/cert-test-CA-nist-secp521r1.pem --caKey=$TEST_CA_DIR/test-CA-nist-secp521r1.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
         printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-custom-subject.pem
         openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-custom-subject.pem -text
 

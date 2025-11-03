@@ -491,10 +491,10 @@ tasks:
       - task: build-dependencies
         vars:
           BRANCH: '{{.BRANCH}}'
-      - docker-compose -f server.yml -f test_app_js.yml build
+      - docker compose -f server.yml -f test_app_js.yml build
 
   docker-compose-deploy:
     desc: "Deploy docker images with docker compose"
     dir: deployments/docker/
     cmds:
-      - docker-compose -f server.yml -f test_app_js.yml up
+      - docker compose -f server.yml -f test_app_js.yml up

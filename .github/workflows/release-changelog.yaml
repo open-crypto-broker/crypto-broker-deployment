@@ -33,6 +33,7 @@ jobs:
 
       - name: Update changelog, create git tag, push to main
         env:
+          REF: ${{ github.ref.name }}
           VERSION: ${{ github.event.inputs.version }}
         run: |
           # add as GitHub actions bot
@@ -47,5 +48,5 @@ jobs:
           git commit -m "chore(release): update CHANGELOG.md"
           # create a git tag
           git tag v"$VERSION"
-          # push to main
-          git push origin/main --tags
+          # push to specified branch selected in UI
+          git push --atomic origin "$REF" v"$VERSION"

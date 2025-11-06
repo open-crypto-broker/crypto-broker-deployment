@@ -397,7 +397,7 @@ tasks:
           TEST_CSR_DIR=testing/certificates/test-csr
           printf "Testing SignCertificate API\nProfile: \"{{.PROFILE}}\"\nCSR: \"{{.ITEM}}\"\nIssuer: \"{{.ISSUER}}\"\n"
           RESPONSE=$({{.CLIENT_PATH}} --profile={{.PROFILE}} sign --csr=$TEST_CSR_DIR/{{.ITEM}}.csr --caCert=$TEST_CA_DIR/cert-{{.ISSUER}}.pem --caKey=$TEST_CA_DIR/{{.ISSUER}}.pem)
-          if echo "$RESPONSE" | grep -E 'Sign [Rr]esponse'; then
+          if echo "$RESPONSE" | {{.GREP_CMD}} -E 'Sign [Rr]esponse'; then
             printf " ✅ |" >> {{.COMP_MATRIX}}
             echo "✅ Supported"
           else

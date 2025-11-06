@@ -3,9 +3,12 @@
 version: '3'
 
 vars:
-  # Clients
-  CLIENTS: ["go", "js"]
-  CLIENTS_PATH: ["./crypto-broker-client-go/cli/bin/go-client-cli", "node crypto-broker-client-js/dist/cli.js"]
+  # Map of clients for each programming language and the path to its executable
+  CLIENTS:
+    map: {
+      go: "./crypto-broker-client-go/cli/bin/go-client-cli",
+      js: "node crypto-broker-client-js/dist/cli.js"
+    }
   # Here are the Known-Answer-Tests for the following text (without quotes): "Welcome CryptoBroker"
   KAT:
     map: {
@@ -32,22 +35,24 @@ vars:
     "FIPS-140-3-Strict"
   ]
   CSR: [
-    "csr-rsa-2048.csr",
-    "csr-rsa-3072.csr",
-    "csr-rsa-4096.csr",
-    "csr-rsa-8192.csr",
-    "csr-rsa-15380.csr",
-    "csr-nist-secp224r1.csr",
-    "csr-nist-secp256k1.csr",
-    "csr-nist-secp384r1.csr",
-    "csr-nist-secp521r1.csr"
+    "csr-rsa-2048",
+    "csr-rsa-3072",
+    "csr-rsa-4096",
+    "csr-rsa-8192",
+    "csr-rsa-15380",
+    "csr-nist-secp224r1",
+    "csr-nist-secp256r1",
+    "csr-nist-secp384r1",
+    "csr-nist-secp521r1"
   ]
   ISSUER: [
-    "test-CA-rsa-3072.pem",
-    "test-CA-nist-secp256k1.pem",
-    "test-CA-nist-secp384r1.pem",
-    "test-CA-nist-secp521r1.pem"
+    "test-CA-rsa-3072",
+    "test-CA-nist-secp256r1",
+    "test-CA-nist-secp384r1",
+    "test-CA-nist-secp521r1"
   ]
+  # Compatibility matrix file path
+  COMP_MATRIX: "testing/compatibility-matrix.md"
   # GNU grep support depending on OS
   GREP_CMD:
     sh: |
@@ -178,11 +183,11 @@ tasks:
       - for: { var: CLIENTS }
         task: delete-client
         vars:
-          CLIENT: '{{.ITEM}}'
+          CLIENT: '{{.KEY}}'
       - for: { var: CLIENTS }
         task: delete-cf-deployment
         vars:
-          CLIENT: '{{.ITEM}}'
+          CLIENT: '{{.KEY}}'
 
   ################# End-to-End Tests ####################
   # Public tasks for testing
@@ -264,7 +269,8 @@ tasks:
       - for: { var: CLIENTS }
         task: build-client
         vars:
-          CLIENT: '{{.ITEM}}'
+          CLIENT: '{{.KEY}}'
+          CLIENT_PATH: '{{.ITEM}}'
           BRANCH: '{{.BRANCH}}'
           OS: '{{.OS}}'
           ARCH: '{{.ARCH}}'
@@ -287,9 +293,9 @@ tasks:
     desc: "Iterate hashing tests over all clients"
     internal: true
     vars:
-      ref: .CLIENTS_PATH
+      ref: .CLIENTS
     cmds:
-      - for: { var: CLIENTS_PATH }
+      - for: { var: CLIENTS }
         task: test-hashing-KATs
         vars:
           CLIENT_PATH: '{{.ITEM}}'
@@ -315,57 +321,112 @@ tasks:
     desc: "Iterate signing tests over all clients"
     internal: true
     vars:
-      ref: .CLIENTS_PATH
+      ref: .CLIENTS
     cmds:
-      - for: { var: CLIENTS_PATH }
-        task: test-sign-profiles
+      - printf "# Clients Compatibility Matrix\n\n" >> {{.COMP_MATRIX}}
+      - for: { var: CLIENTS }
+        task: test-sign-iterate-profiles
         vars:
+          CLIENT: '{{.KEY}}'
           CLIENT_PATH: '{{.ITEM}}'
+      # Remove the duplicate newline at EOF (otherwise Markdownlint will complain)
+      - truncate -s -1 {{.COMP_MATRIX}}
 
-  test-sign-profiles:
-    desc: "Test certificate signing command with all profiles"
+  test-sign-iterate-profiles:
+    desc: "Iterate over each profile"
+    internal: true
     vars:
       ref: .PROFILES
     cmds:
+      - printf "## {{.CLIENT | title}} Client\n\n" >> {{.COMP_MATRIX}}
       - for: { var: PROFILES }
-        task: test-sign-ca-csrs
+        task: test-sign-iterate-issuer
         vars:
           PROFILE: '{{.ITEM}}'
           CLIENT_PATH: '{{.CLIENT_PATH}}'
 
-  test-sign-ca-csrs:
-    desc: "Test each CSR with each CA-issuer certificate and key"
+  test-sign-iterate-issuer:
+    desc: "Iterate over each CA-issuer certificate and key"
     internal: true
     silent: true
+    vars:
+      ISSUER:
+        ref: .ISSUER
+      CSR:
+        ref: .CSR
     cmds:
-      - for:
-          matrix:
-            CSR:
-              ref: .CSR
-            ISSUER:
-              ref: .ISSUER
-        cmd:
-          |
+      - printf "### Profile \"{{.PROFILE}}\"\n\n" >> {{.COMP_MATRIX}}
+      ### Header row generation
+      # First cell of header row
+      - printf "| Issuer↓ \ CSR➔ | " >> {{.COMP_MATRIX}}
+      # Create the rest of the header row for the compatibility matrix
+      - for: { var: CSR }
+        cmd: |
+          printf " {{.ITEM | upper}} |" >> {{.COMP_MATRIX}}
+      - printf "\n" >> {{.COMP_MATRIX}}
+      ### Markdown specific second row
+      # First cell of the second row
+      - printf "| --- | " >> {{.COMP_MATRIX}}
+      # Create the rest of the second row with center alignment
+      - for: { var: CSR }
+        cmd: |
+          printf " :---: |" >> {{.COMP_MATRIX}}
+      - printf "\n" >> {{.COMP_MATRIX}}
+      ### Fill the table
+      # Iterate for each issuer CA and key over each CSR
+      - for: { var: ISSUER }
+        task: test-sign-iterate-csr
+        vars:
+          CLIENT_PATH: '{{.CLIENT_PATH}}'
+          PROFILE: '{{.PROFILE}}'
+          ISSUER: '{{.ITEM}}'
+      - printf "\n" >> {{.COMP_MATRIX}}
+
+  test-sign-iterate-csr:
+    desc: "Iterate over each CSR"
+    internal: true
+    silent: true
+    vars:
+      ref: .CSR
+    cmds:
+      # First cell in each row: Issuer key size
+      - printf "| {{.ISSUER | upper}} |" >> {{.COMP_MATRIX}}
+      - for: { var: CSR }
+        cmd: |
           TEST_CA_DIR=testing/certificates/test-ca
           TEST_CSR_DIR=testing/certificates/test-csr
-          printf "Testing SignCertificate API\nProfile: \"{{.PROFILE}}\"\nCSR: \"{{.ITEM.CSR}}\"\nIssuer: \"{{.ITEM.ISSUER}}\"\n"
-          RESPONSE=$({{.CLIENT_PATH}} --profile={{.PROFILE}} sign --csr=$TEST_CSR_DIR/{{.ITEM.CSR}} --caCert=$TEST_CA_DIR/cert-{{.ITEM.ISSUER}} --caKey=$TEST_CA_DIR/{{.ITEM.ISSUER}})
-          if echo "$RESPONSE" | grep -q 'Sign Response'; then
-            echo "✅ Success"
+          printf "Testing SignCertificate API\nProfile: \"{{.PROFILE}}\"\nCSR: \"{{.ITEM}}\"\nIssuer: \"{{.ISSUER}}\"\n"
+          RESPONSE=$({{.CLIENT_PATH}} --profile={{.PROFILE}} sign --csr=$TEST_CSR_DIR/{{.ITEM}}.csr --caCert=$TEST_CA_DIR/cert-{{.ISSUER}}.pem --caKey=$TEST_CA_DIR/{{.ISSUER}}.pem)
+          if echo "$RESPONSE" | grep -E 'Sign [Rr]esponse'; then
+            printf " ✅ |" >> {{.COMP_MATRIX}}
+            echo "✅ Supported"
           else
-            echo "❌ Failure"
+            printf " ❌ |" >> {{.COMP_MATRIX}}
+            echo "❌ Not supported"
           fi
-          printf "\n"
+      - printf "\n" >> {{.COMP_MATRIX}}
 
-  # ToDo: Run this separate from the main sing certificate test
+  # Test custom subject feature
+  test-sign-certificate-clients-custom-subject:
+    desc: "Iterate signing tests over all clients with a custom subject"
+    vars:
+      ref: .CLIENTS
+    cmds:
+      - for: { var: CLIENTS }
+        task: test-sign-certificate-custom-subject
+        vars:
+          CLIENT_PATH: '{{.ITEM}}'
+
   test-sign-certificate-custom-subject:
     desc: "Test custom subject with CLI API"
+    internal: true
     cmds:
       - |
         echo "Test custom subject with CLI API"
         TMP_DIR=tmp/certificate-responses/subject
         TEST_CA_DIR=testing/certificates/test-ca
         TEST_CSR_DIR=testing/certificates/test-csr
+        rm -rf $TMP_DIR
         mkdir -p $TMP_DIR
         SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} --profile=Default sign --csr=$TEST_CSR_DIR/csr-nist-secp384r1.csr --caCert=$TEST_CA_DIR/cert-test-CA-nist-secp521r1.pem --caKey=$TEST_CA_DIR/test-CA-nist-secp521r1.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
         printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-custom-subject.pem

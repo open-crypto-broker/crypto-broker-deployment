@@ -33,7 +33,7 @@ jobs:
 
       - name: Update changelog, create git tag, push to main
         env:
-          REF: ${{ github.ref.name }}
+          REF: ${{ github.ref_name }}
           VERSION: ${{ github.event.inputs.version }}
         run: |
           # add as GitHub actions bot

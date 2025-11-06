@@ -122,6 +122,12 @@ In order to clean everything up, the following task can be used:
 task delete-all
 ```
 
+### Clients Compatibility Matrix
+
+The `task test-sign-clients` command can build a compatibility matrix for each client, showing which profile supports which key-sizes for CSRs and also for the test Certificate Authority.
+The command can take sime time, since its complexity is O(n<sup>4</sup>): for each client, each profile will be tested and for each profile each CSR and for each CSR the different CA certificates will be tested.
+The results are automatically gathered and are shown in a [table in the testing folder](testing/compatibility-matrix.md).
+
 ## Support, Feedback, Contributing
 
 This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/open-crypto-broker/crypto-broker-deployment/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).

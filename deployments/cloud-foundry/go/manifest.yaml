@@ -15,13 +15,18 @@ applications:
         process_types:
           - web
         command: 'CRYPTO_BROKER_PROFILES_DIR=$PWD ./cryptobroker-server'
-      - name: crypto-broker-client-1
+      - name: crypto-broker-client-profile-default
         health-check-type: process
         process_types:
           - web
-        command: './go-client-cli --loop 20 --profile=sign-certificate-ecdsa-sha512 sign --csr=certificates/test-csr/test-client.csr --caCert=certificates/test-ca/root-CA-ecdsa.pem --caKey=certificates/test-ca/root-CA-ecdsa-private-key.pem'
-      - name: crypto-broker-client-2
+        command: './go-client-cli --loop 20 --profile=Default sign --csr=certificates/test-csr/csr-rsa-2048.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp384r1.pem --caKey=certificates/test-ca/test-CA-nist-secp384r1.pem'
+      - name: crypto-broker-client-profile-fips-baseline
         health-check-type: process
         process_types:
           - web
-        command: './go-client-cli --loop 30 --profile=sign-certificate-rsa-sha512 sign --csr=certificates/test-csr/test-client.csr --caCert=certificates/test-ca/root-CA-rsa.pem --caKey=certificates/test-ca/root-CA-rsa-private-key.pem'
+        command: './go-client-cli --loop 30 --profile=FIPS-140-3-Baseline sign --csr=certificates/test-csr/csr-rsa-8192.csr --caCert=certificates/test-ca/cert-test-CA-rsa-3072.pem --caKey=certificates/test-ca/test-CA-rsa-3072.pem'
+      - name: crypto-broker-client-profile-fips-strict
+        health-check-type: process
+        process_types:
+          - web
+        command: './go-client-cli --loop 40 --profile=FIPS-140-3-Strict sign --csr=certificates/test-csr/csr-rsa-15380.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp521r1.pem --caKey=certificates/test-ca/test-CA-nist-secp521r1.pem'

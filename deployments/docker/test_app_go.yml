@@ -27,9 +27,9 @@ services:
       - --loop=1000
       - --profile=Default
       - sign
-      - --csr=/certificates/test-csr/test-client.csr
-      - --caCert=/certificates/test-ca/root-CA-ecdsa.pem
-      - --caKey=/certificates/test-ca/root-CA-ecdsa-private-key.pem
+      - --csr=/certificates/test-csr/csr-nist-secp256r1.csr
+      - --caCert=/certificates/test-ca/cert-test-CA-nist-secp384r1.pem
+      - --caKey=/certificates/test-ca/test-CA-nist-secp384r1.pem
 volumes:
   shared_data:
 

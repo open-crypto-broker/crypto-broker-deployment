@@ -48,19 +48,19 @@ task deploy-cf-cryptobroker CLIENT=go
 task deploy-cf-cryptobroker CLIENT=js
 ```
 
-### Docker-Compose and Kubernetes
+### Docker and Kubernetes
 
 #### Kubernetes Setup
 
-For deployment in Kubernetes, Kubernetes and Helm must be installed in terminal. Kubernetes is installed with Docker-desktop, while Helm can be easily installed as per documentation [Helm Install](https://helm.sh/docs/intro/install/). Optionally, for deploying on a custom Kubernetes Cloud Cluster, you might need to setup your local `.env` file and change it to write your own user information (see above).
+For deployment in Docker, the docker compose modules must be installed.
+For deployment in Kubernetes, Kubernetes and Helm must be installed in terminal.
+Kubernetes is installed with Docker-desktop, while Helm can be easily installed as per documentation [Helm Install](https://helm.sh/docs/intro/install/).
 
-Please, DO NOT share this file with anybody or upload it anywhere. This file should only be stored locally in your computer and will be read each time you run a `task` command.
-
-#### Docker-Compose and Kubernetes Deployment
+#### Docker Compose and Kubernetes Deployment
 
 For a local docker deployment the following tasks can be used.
 The first task will clone and build the Crypto Broker server and the clients.
-The docker-compose files in the `deployments/docker` folder are then used to build the docker images.
+The docker compose files in the `deployments/docker` folder are then used to build the docker images.
 
 ```shell
 task docker-compose-build

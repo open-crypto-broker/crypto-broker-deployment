@@ -534,18 +534,36 @@ tasks:
       - npm ci --omit=dev --ignore-scripts
 
   ################# Kubernetes Deployment ####################
-  kube-deploy:
-    desc: "Deploys the Kubernetes Crypto Broker. It requires a .env local file with the repository's credentials"
-    aliases: [deploy]
-    dotenv: ['.env']
-    preconditions:
-      - test -f .env
+  minikube-images:
+    desc: "Load the docker images into minikube"
     cmds:
-      - helm upgrade --install broker ./deployments/k8s/kube-broker/ --namespace crypto-broker --create-namespace --force --set imageCredentials.username=$DOCKER_USERNAME --set imageCredentials.password=$DOCKER_PASSWORD --set imageCredentials.email=$DOCKER_EMAIL
+      - minikube image load ghcr.io/open-crypto-broker/test-app-js ghcr.io/open-crypto-broker/server
+
+  kube-deploy:
+    desc: "Deploys the Kubernetes Crypto Broker"
+    dir: deployments/k8s/kube-broker/
+    cmds:
+      - helm install -f Chart.yaml -f values.yaml crypto-broker --namespace crypto-broker --create-namespace .
 
   kube-destroy:
     desc: "Destroys the Kubernetes Crypto Broker deployment"
-    dotenv: ['.env']
-    aliases: [destroy]
     cmds:
-      - helm uninstall broker -n crypto-broker
+      - helm uninstall crypto-broker -n crypto-broker
+
+  ################# Docker-Compose Deployment ####################
+  docker-compose-build:
+    desc: "Build docker images"
+    dir: deployments/docker/
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+    cmds:
+      - task: build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+      - docker compose -f server.yml -f test_app_js.yml build
+
+  docker-compose-deploy:
+    desc: "Deploy docker images with docker compose"
+    dir: deployments/docker/
+    cmds:
+      - docker compose -f server.yml -f test_app_js.yml up

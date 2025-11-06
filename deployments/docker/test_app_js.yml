@@ -1,14 +1,36 @@
+x-test-app-js: &app-base
+  image: ghcr.io/open-crypto-broker/test-app-js:latest
+  build:
+    dockerfile: Dockerfile
+    context: ../../crypto-broker-client-js
+  restart: always
+  depends_on:
+    - crypto-broker-server
+  volumes:
+    - shared_data:/tmp
+
 services:
-  test-app-js:
-    container_name: test-app-js
-    build:
-      dockerfile: Dockerfile
-      context: ../../crypto-broker-client-js
-    restart: always
-    depends_on:
-      - crypto-broker-server
+  test-app-js-hash:
+    <<: *app-base
+    container_name: test-app-js-hash
+    command:
+      - --loop=1000
+      - --profile=Default
+      - hash
+      - Hello Cryptobroker!
+  test-app-js-sign:
+    <<: *app-base
+    container_name: test-app-js-sign
     volumes:
+      - ../../testing/certificates:/certificates:ro
       - shared_data:/tmp
+    command:
+      - --loop=1000
+      - --profile=Default
+      - sign
+      - --csr=/certificates/test-csr/test-client.csr
+      - --caCert=/certificates/test-ca/root-CA-ecdsa.pem
+      - --caKey=/certificates/test-ca/root-CA-ecdsa-private-key.pem
 volumes:
   shared_data:
 

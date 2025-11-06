@@ -10,5 +10,8 @@ rule 'MD013', :line_length => 500
 # There are files which can have the same header caption several times.
 exclude_rule 'MD024'
 
+# Allow specific HTML tags
+rule 'MD033', :allowed_elements => 'sup'
+
 # Not all Markdown files will start with a top level header, some have metadata.
 exclude_rule 'MD041'

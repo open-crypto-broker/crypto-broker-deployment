@@ -1,8 +1,8 @@
 x-test-app-js: &app-base
-  image: ghcr.io/open-crypto-broker/test-app-js:latest
+  image: ghcr.io/open-crypto-broker/test_app_js:${TAG:-latest}
   build:
-    dockerfile: Dockerfile
-    context: ../../crypto-broker-client-js
+    dockerfile: docker/Dockerfile
+    context: ../../crypto-broker-cli-js
   restart: always
   depends_on:
     - crypto-broker-server
@@ -12,7 +12,7 @@ x-test-app-js: &app-base
 services:
   test-app-js-hash:
     <<: *app-base
-    container_name: test-app-js-hash
+    container_name: test_app_js-hash
     command:
       - --loop=1000
       - --profile=Default
@@ -20,7 +20,7 @@ services:
       - Hello Cryptobroker!
   test-app-js-sign:
     <<: *app-base
-    container_name: test-app-js-sign
+    container_name: test_app_js-sign
     volumes:
       - ../../testing/certificates:/certificates:ro
       - shared_data:/tmp

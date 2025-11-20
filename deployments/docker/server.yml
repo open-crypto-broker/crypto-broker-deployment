@@ -1,9 +1,9 @@
 services:
   crypto-broker-server:
     container_name: crypto-broker-server
-    image: ghcr.io/open-crypto-broker/server:latest
+    image: ghcr.io/open-crypto-broker/server:${TAG:-latest}
     build:
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
       context: ../../crypto-broker-server
       args:
         CRYPTO_BROKER_PROFILES_DIR: example-profiles

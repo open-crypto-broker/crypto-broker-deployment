@@ -14,12 +14,12 @@ profilesDir: /app/profiles
 # This is for the secrets for pulling an image from a private repository
 # imagePullSecrets: []
 
-clientApp:
-  name: client-app-js
+cliAppJs:
+  name: test-app-js
   image:
-    name: ghcr.io/open-crypto-broker/test-app-js
-    tag: latest
-    pullPolicy: IfNotPresent
+    name: ghcr.io/open-crypto-broker/test_app_js
+    tag: dev
+    pullPolicy: Always
   argHash:
     - --loop=1000
     - --profile=Default
@@ -33,12 +33,30 @@ clientApp:
     - --caCert=/certificates/ca_cert.pem
     - --caKey=/certificates/private_key.pem
 
+cliAppGo:
+  name: test-app-go
+  image:
+    name: ghcr.io/open-crypto-broker/test_app_go
+    tag: dev
+    pullPolicy: Always
+  argHash:
+    - --loop=1000
+    - --profile=Default
+    - hash
+    - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
+  argSign:
+    - --loop=1000
+    - --profile=Default
+    - sign
+    - --csr=/certificates/end-entity.csr
+    - --caCert=/certificates/ca_cert.pem
+
 serverApp:
   name: server-app
   image:
     name: ghcr.io/open-crypto-broker/server
-    tag: latest
-    pullPolicy: IfNotPresent
+    tag: dev
+    pullPolicy: Always
 
 volumes:
   - name: socket-volume

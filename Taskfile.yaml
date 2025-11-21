@@ -62,11 +62,11 @@ vars:
       esac
 
 tasks:
-  ################# Build Crypto Broker Client ####################
-  # Public build task for the clients.
+  ################# Build Crypto Broker CLI Clients ####################
+  # Public build task for the CLI test-clients.
   # At first, an already existing cloned repo will be deleted.
-  # Then the repo will be cloned and the submodules initialized.
-  # After that the client will be build, language specific tasks are executed.
+  # Then the repo will be cloned.
+  # After that the CLI test-client will be build, language specific tasks are executed.
   build-cli:
     desc: "Build a client depending on the CLI argument with CLIENT='', values: 'go', 'js'. Also the branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
@@ -91,7 +91,7 @@ tasks:
           OS: '{{.OS}}'
           ARCH: '{{.ARCH}}'
 
-  # Delete the specified cli
+  # Delete the specified cli client
   delete-cli:
     desc: "Delete cli test app source folder depending on the CLI argument with CLIENT='', values: 'go', 'js'"
     requires:
@@ -101,7 +101,7 @@ tasks:
     cmds:
       - rm -rf crypto-broker-cli-{{.CLIENT}}
 
-  # Internal tasks for building specified client
+  # Internal tasks for building specified CLI test-client
   clone-cli:
     internal: true
     desc: "Clone test app repository"

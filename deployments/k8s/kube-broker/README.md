@@ -20,7 +20,7 @@ Basic default info when deployed:
 - Namespace: crypto-broker
 - Deployment name: broker-kube-broker
 - Replica count: 1
-- Containers inside each Pod: 3, two clients and one server
+- Containers inside each Pod: 3, two CLI test applications using the client libraries, and one server
 
 The most basic `kubectl` commands you will use are:
 

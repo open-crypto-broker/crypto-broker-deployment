@@ -1,8 +1,8 @@
 # Crypto Broker Deployment and End-to-End Testing
 
 This repository features two purposes.
-On the one hand it describes how the Crypto Broker Server and the different Crypto Broker Clients can be deployed to Cloud Foundry and Kubernetes.
-On the other hand it can perform end-to-end tests which simulate the usage of the Crypto Broker Server and the different Crypto Broker Clients from a user perspective.
+On the one hand, it describes how to deploy the Crypto Broker Server and how to use the Crypto Broker client libraries through CLI test applications, as well as how to run both on Cloud Foundry and Kubernetes.
+On the other hand it can perform end-to-end tests which simulate the usage of the Crypto Broker Server and the different Crypto Broker Clients from a user perspective. 
 
 ## Cross Compilation and Branch Support
 
@@ -28,7 +28,7 @@ As a prerequisite, the Cloud Foundry CLI needs to be installed locally. After th
 #### Cloud Foundry Deployment
 
 The deployment of a Cloud Foundry app is managed via a [Cloud Foundry Manifest](https://docs.cloudfoundry.org/devguide/deploy-apps/manifest.html) file.
-The Crypto Broker Server is meant to be deployed as a Sidecar to the main app, which uses any of the Crypto Broker Clients to communicate with the Server via a unix socket on a shared filesystem between Client and Server (more on the [documentation repo](https://github.com/open-crypto-broker/crypto-broker-documentation)).
+The Crypto Broker Server is meant to be deployed as a Sidecar to the main app, which uses any of the Crypto Broker Clients to communicate with the Server via a unix socket on a shared filesystem between application and server (more on the [documentation repo](https://github.com/open-crypto-broker/crypto-broker-documentation)).
 
 Two example Manifests can be found inside the [deployments folder](deployments/cloud-foundry/), both sharing the same sidecar. The only difference between the two is the client library used, one in Golang, the other one in NodeJs.
 
@@ -39,7 +39,7 @@ As it can be seen from the Manifest files, only two things are needed for deploy
 
 For simplicity, in the example manifests both binary and profile are located in the same folder as the `manifest.yaml` file. That way, they can be easily accessed by the CLI when deploying to Cloud Foundry.
 
-In order to deploy the Crypto Broker Server and one of the Crypto Broker Clients, the following task can be executed specifying which client should be deployed.
+In order to deploy the Crypto Broker Server and one of the Crypto Broker test apps, the following task can be executed specifying which test app should be deployed.
 A prerequisite is, that the login to the Cloud Foundry instance happened already.
 
 ```bash
@@ -59,7 +59,7 @@ Kubernetes is installed with Docker-desktop, while Helm can be easily installed 
 #### Docker Compose and Kubernetes Deployment
 
 For a local docker deployment the following tasks can be used.
-The first task will clone and build the Crypto Broker server and the clients.
+The first task will clone and build the Crypto Broker server and the test apps.
 The docker compose files in the `deployments/docker` folder are then used to build the docker images.
 
 ```shell
@@ -80,7 +80,7 @@ task minikube-images
 task kube-deploy
 ```
 
-This will deploy the Helm chart `kube-broker` in the `crypto-broker` namespace in your local kubernetes cluster. The cluster will spin up a server which listens on the Unix Socket and two clients that will send periodically requests (hash and sign) to the server.
+This will deploy the Helm chart `kube-broker` in the `crypto-broker` namespace in your local kubernetes cluster. The cluster will spin up a server which listens on the Unix Socket and two CLI test apps that will send periodically requests (hash and sign) to the server.
 
 To modify the parameters of the deployment, you can modify the values of the [values file](deployments/k8s/kube-broker/values.yaml). This includes for example the image name and tag, the arguments for hashing and signing, the number of replicas and more. Feel free to check the [Kubernetes Readme](deployments/k8s/kube-broker/README.md) for a more detailed explanation of the different values and configuration options that can be set.
 
@@ -99,19 +99,19 @@ With these tests the complete message flow is visible from start to end.
 The following command performs all tests with all combinations of clients and the server:
 
 ```bash
-task test-clients
+task test-clis
 ```
 
-The E2E hashing tests for all clients and server can be executed with:
+The E2E hashing tests for all test apps and server can be executed with:
 
 ```bash
-task test-hash-clients
+task test-hash-clis
 ```
 
-The E2E signing tests for all clients and server are executed with:
+The E2E signing tests for all clis and server are executed with:
 
 ```bash
-task test-sign-clients
+task test-sign-clis
 ```
 
 These E2E tests are also executed in GitHub Actions.
@@ -124,8 +124,8 @@ task delete-all
 
 ### Clients Compatibility Matrix
 
-The `task test-sign-clients` command can build a compatibility matrix for each client, showing which profile supports which key-sizes for CSRs and also for the test Certificate Authority.
-The command can take sime time, since its complexity is O(n<sup>4</sup>): for each client, each profile will be tested and for each profile each CSR and for each CSR the different CA certificates will be tested.
+The `task test-sign-clis` command can build a compatibility matrix for each client, showing which profile supports which key-sizes for CSRs and also for the test Certificate Authority.
+The command can take some time, since its complexity is O(n<sup>4</sup>): for each client, each profile will be tested and for each profile each CSR and for each CSR the different CA certificates will be tested.
 The results are automatically gathered and are shown in a [table in the testing folder](testing/compatibility-matrix.md).
 
 ## Support, Feedback, Contributing

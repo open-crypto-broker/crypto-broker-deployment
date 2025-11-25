@@ -1,7 +1,8 @@
 x-test-app-go: &app-base
+  image: ghcr.io/open-crypto-broker/test_app_go:${TAG:-latest}
   build:
-    dockerfile: Dockerfile
-    context: ../../crypto-broker-client-go/cli
+    dockerfile: docker/Dockerfile
+    context: ../../crypto-broker-cli-go
   restart: always
   depends_on:
     - crypto-broker-server
@@ -11,7 +12,7 @@ x-test-app-go: &app-base
 services:
   test-app-go-hash:
     <<: *app-base
-    container_name: test-app-go-hash
+    container_name: test_app_go-hash
     command:
       - --loop=1000
       - --profile=Default
@@ -19,7 +20,7 @@ services:
       - Hello Cryptobroker!
   test-app-go-sign:
     <<: *app-base
-    container_name: test-app-go-sign
+    container_name: test_app_go-sign
     volumes:
       - ../../testing/certificates:/certificates:ro
       - shared_data:/tmp

@@ -26,15 +26,15 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         # Client App with hashing request
-        - name: "{{ .Values.clientApp.name }}-hashing"
+        - name: "{{ .Values.cliAppJs.name }}-hashing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.clientApp.image.name }}:{{ .Values.clientApp.image.tag | default "latest" }}"
-          imagePullPolicy: {{ .Values.clientApp.image.pullPolicy }}
+          image: "{{ .Values.cliAppJs.image.name }}:{{ .Values.cliAppJs.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.cliAppJs.image.pullPolicy }}
           envFrom:
             - configMapRef:
                 name: {{ include "kube-broker.fullname" . }}-clientconfig
-          {{- with .Values.clientApp.argHash }}
+          {{- with .Values.cliAppJs.argHash }}
           args:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -46,15 +46,15 @@ spec:
           {{- end }}
 
         # Client App with signing request
-        - name: "{{ .Values.clientApp.name }}-signing"
+        - name: "{{ .Values.cliAppJs.name }}-signing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.clientApp.image.name }}:{{ .Values.clientApp.image.tag | default "latest" }}"
-          imagePullPolicy: {{ .Values.clientApp.image.pullPolicy }}
+          image: "{{ .Values.cliAppJs.image.name }}:{{ .Values.cliAppJs.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.cliAppJs.image.pullPolicy }}
           envFrom:
             - configMapRef:
                 name: {{ include "kube-broker.fullname" . }}-clientconfig
-          {{- with .Values.clientApp.argSign }}
+          {{- with .Values.cliAppJs.argSign }}
           args:
             {{- toYaml . | nindent 12 }}
           {{- end }}

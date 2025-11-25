@@ -6,8 +6,8 @@ vars:
   # Map of clients for each programming language and the path to its executable
   CLIENTS:
     map: {
-      go: "./crypto-broker-client-go/cli/bin/go-client-cli",
-      js: "node crypto-broker-client-js/dist/cli.js"
+      go: "./crypto-broker-cli-go/bin/go-client-cli",
+      js: "node crypto-broker-cli-js/dist/cli.js"
     }
   # Here are the Known-Answer-Tests for the following text (without quotes): "Welcome CryptoBroker"
   KAT:
@@ -62,12 +62,12 @@ vars:
       esac
 
 tasks:
-  ################# Build Crypto Broker Client ####################
-  # Public build task for the clients.
+  ################# Build Crypto Broker CLI Clients ####################
+  # Public build task for the CLI test-clients.
   # At first, an already existing cloned repo will be deleted.
-  # Then the repo will be cloned and the submodules initialized.
-  # After that the client will be build, language specific tasks are executed.
-  build-client:
+  # Then the repo will be cloned.
+  # After that the CLI test-client will be build, language specific tasks are executed.
+  build-cli:
     desc: "Build a client depending on the CLI argument with CLIENT='', values: 'go', 'js'. Also the branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
@@ -79,49 +79,45 @@ tasks:
           enum: [go, js]
     cmds:
       - echo "Building {{.CLIENT}} client from branch '{{.BRANCH}}'"
-      - task: delete-client
+      - task: delete-cli
         vars:
           CLIENT: '{{.CLIENT}}'
-      - task: clone-client
+      - task: clone-cli
         vars:
           CLIENT: '{{.CLIENT}}'
           BRANCH: '{{.BRANCH}}'
-      - task: build-client-{{.CLIENT}}
+      - task: build-cli-{{.CLIENT}}
         vars:
           OS: '{{.OS}}'
           ARCH: '{{.ARCH}}'
 
-  # Delete the specified client
-  delete-client:
-    desc: "Delete client source folder depending on the CLI argument with CLIENT='', values: 'go', 'js'"
+  # Delete the specified cli client
+  delete-cli:
+    desc: "Delete cli test app source folder depending on the CLI argument with CLIENT='', values: 'go', 'js'"
     requires:
       vars:
         - name: CLIENT
           enum: [go, js]
     cmds:
-      - rm -rf crypto-broker-client-{{.CLIENT}}
+      - rm -rf crypto-broker-cli-{{.CLIENT}}
 
-  # Internal tasks for building specified client
-  clone-client:
+  # Internal tasks for building specified CLI test-client
+  clone-cli:
     internal: true
-    desc: "Clone client repository"
+    desc: "Clone test app repository"
     cmds:
       # clone the client using a specific branch
-      - git clone -b {{.BRANCH}} --single-branch https://github.com/open-crypto-broker/crypto-broker-client-{{.CLIENT}}.git
-      # initialize protobuf submodule
-      - |
-       cd crypto-broker-client-{{.CLIENT}}/protobuf
-       git submodule update --init
+      - git clone -b {{.BRANCH}} --single-branch https://github.com/open-crypto-broker/crypto-broker-cli-{{.CLIENT}}.git
 
-  build-client-go:
+  build-cli-go:
     internal: true
-    dir: crypto-broker-client-go/cli
+    dir: crypto-broker-cli-go
     cmds:
       - GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ./bin/go-client-cli main.go
 
-  build-client-js:
+  build-cli-js:
     internal: true
-    dir: crypto-broker-client-js/
+    dir: crypto-broker-cli-js/
     cmds:
       - npm install
 
@@ -181,7 +177,7 @@ tasks:
     cmds:
       - task: delete-crypto-broker-server
       - for: { var: CLIENTS }
-        task: delete-client
+        task: delete-cli
         vars:
           CLIENT: '{{.KEY}}'
       - for: { var: CLIENTS }
@@ -191,7 +187,7 @@ tasks:
 
   ################# End-to-End Tests ####################
   # Public tasks for testing
-  test-hash-clients:
+  test-hash-clis:
     desc: "Build, run and perform hashing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
@@ -205,14 +201,15 @@ tasks:
           ARCH: '{{.ARCH}}'
       - task: start-crypto-broker-server
       - defer: { task: stop-crypto-broker-server }
-      - task: test-hashing-clients
+      - task: test-hashing-clis
 
-  test-sign-clients:
+  test-sign-clis:
     desc: "Build, run and perform signing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       OS: '{{.OS}}'
       ARCH: '{{.ARCH}}'
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
     cmds:
       - task: build-dependencies
         vars:
@@ -221,9 +218,11 @@ tasks:
           ARCH: '{{.ARCH}}'
       - task: start-crypto-broker-server
       - defer: { task: stop-crypto-broker-server }
-      - task: test-sign-certificate-clients
+      - task: test-sign-certificate-clis
+        vars:
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
 
-  test-clients:
+  test-clis:
     desc: "Combine all tests for all clients in one task. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
@@ -237,8 +236,8 @@ tasks:
           ARCH: '{{.ARCH}}'
       - task: start-crypto-broker-server
       - defer: { task: stop-crypto-broker-server }
-      - task: test-hashing-clients
-      - task: test-sign-certificate-clients
+      - task: test-hashing-clis
+      - task: test-sign-certificate-clis
 
   # Tasks for installing/removing GNU grep on macOS
   macos-install-gnu-grep:
@@ -267,7 +266,7 @@ tasks:
           OS: '{{.OS}}'
           ARCH: '{{.ARCH}}'
       - for: { var: CLIENTS }
-        task: build-client
+        task: build-cli
         vars:
           CLIENT: '{{.KEY}}'
           CLIENT_PATH: '{{.ITEM}}'
@@ -289,11 +288,12 @@ tasks:
       - kill $(ps -e | awk '/cryptobroker/ {print $1}')
 
   # Hashing tests from the clients
-  test-hashing-clients:
+  test-hashing-clis:
     desc: "Iterate hashing tests over all clients"
     internal: true
     vars:
-      ref: .CLIENTS
+      CLIENTS:
+        ref: .CLIENTS
     cmds:
       - for: { var: CLIENTS }
         task: test-hashing-KATs
@@ -304,7 +304,8 @@ tasks:
     desc: "Iterate over all hashing KATs"
     internal: true
     vars:
-      ref: .KAT
+      KAT:
+        ref: .KAT
     cmds:
       - for: { var: KAT }
         cmd:
@@ -317,97 +318,182 @@ tasks:
           fi
 
   # Sign certificate tests from the clients
-  test-sign-certificate-clients:
+  test-sign-certificate-clis:
     desc: "Iterate signing tests over all clients"
     internal: true
+    silent: true
     vars:
-      ref: .CLIENTS
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+      CLIENTS:
+        ref: .CLIENTS
     cmds:
-      - printf "# Clients Compatibility Matrix\n\n" >> {{.COMP_MATRIX}}
+        # Delete previous compatibility matrix
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        rm {{.COMP_MATRIX}}
+        {{end}}
+      # Create header for compatibility matrix
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "# Clients Compatibility Matrix\n\n" >> {{.COMP_MATRIX}}
+        {{end}}
       - for: { var: CLIENTS }
         task: test-sign-iterate-profiles
         vars:
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
           CLIENT: '{{.KEY}}'
           CLIENT_PATH: '{{.ITEM}}'
-      # Remove the duplicate newline at EOF (otherwise Markdownlint will complain)
-      - truncate -s -1 {{.COMP_MATRIX}}
+      # Remove duplicate newline at EOF (otherwise Markdownlint will complain)
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        truncate -s -1 {{.COMP_MATRIX}}
+        {{end}}
 
   test-sign-iterate-profiles:
     desc: "Iterate over each profile"
     internal: true
+    silent: true
     vars:
-      ref: .PROFILES
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+      PROFILES:
+        ref: .PROFILES
     cmds:
-      - printf "## {{.CLIENT | title}} Client\n\n" >> {{.COMP_MATRIX}}
+      # Add header for each client
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "## {{.CLIENT | title}} Client\n\n" >> {{.COMP_MATRIX}}
+        {{end}}
       - for: { var: PROFILES }
         task: test-sign-iterate-issuer
         vars:
-          PROFILE: '{{.ITEM}}'
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
           CLIENT_PATH: '{{.CLIENT_PATH}}'
+          PROFILE: '{{.ITEM}}'
 
   test-sign-iterate-issuer:
     desc: "Iterate over each CA-issuer certificate and key"
     internal: true
     silent: true
     vars:
-      ISSUER:
-        ref: .ISSUER
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
       CSR:
         ref: .CSR
+      ISSUER:
+        ref: .ISSUER
     cmds:
-      - printf "### Profile \"{{.PROFILE}}\"\n\n" >> {{.COMP_MATRIX}}
-      ### Header row generation
-      # First cell of header row
-      - printf "| Issuer↓ \ CSR➔ | " >> {{.COMP_MATRIX}}
-      # Create the rest of the header row for the compatibility matrix
-      - for: { var: CSR }
-        cmd: |
-          printf " {{.ITEM | upper}} |" >> {{.COMP_MATRIX}}
-      - printf "\n" >> {{.COMP_MATRIX}}
-      ### Markdown specific second row
-      # First cell of the second row
-      - printf "| --- | " >> {{.COMP_MATRIX}}
-      # Create the rest of the second row with center alignment
-      - for: { var: CSR }
-        cmd: |
-          printf " :---: |" >> {{.COMP_MATRIX}}
-      - printf "\n" >> {{.COMP_MATRIX}}
+      - task: comp-matrix-create-header-row
+        vars:
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+          CSR:
+            ref: .CSR
+          PROFILE: '{{.PROFILE}}'
       ### Fill the table
       # Iterate for each issuer CA and key over each CSR
       - for: { var: ISSUER }
         task: test-sign-iterate-csr
         vars:
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
           CLIENT_PATH: '{{.CLIENT_PATH}}'
           PROFILE: '{{.PROFILE}}'
           ISSUER: '{{.ITEM}}'
-      - printf "\n" >> {{.COMP_MATRIX}}
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "\n" >> {{.COMP_MATRIX}}
+        {{end}}
+
+  comp-matrix-create-header-row:
+    desc: "Create header rows for the compatibility matrix"
+    internal: true
+    silent: true
+    vars:
+      PROFILE: '{{.PROFILE}}'
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+      CSR:
+        ref: .CSR
+    cmds:
+      ### Add header for each profile
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "### Profile \"{{.PROFILE}}\"\n\n" >> {{.COMP_MATRIX}}
+        {{end}}
+      ### Header row generation
+      # First cell of header row
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "| Issuer↓ \ CSR➔ | " >> {{.COMP_MATRIX}}
+        {{end}}
+      # Create the rest of the header row for the compatibility matrix
+      - for: { var: CSR }
+        cmd:
+          |
+          {{if eq .CREATE_COMP_MATRIX "true"}}
+          printf " {{.ITEM | upper}} |" >> {{.COMP_MATRIX}}
+          {{end}}
+      # Add newline at end of header row
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "\n" >> {{.COMP_MATRIX}}
+        {{end}}
+      ### Markdown specific second row
+      # First cell of the second row
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "| --- | " >> {{.COMP_MATRIX}}
+        {{end}}
+      # Create the rest of the second row with center alignment
+      - for: { var: CSR }
+        cmd: |
+          {{if eq .CREATE_COMP_MATRIX "true"}}
+          printf " :---: |" >> {{.COMP_MATRIX}}
+          {{end}}
+      # Add newline at end of second row
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "\n" >> {{.COMP_MATRIX}}
+        {{end}}
 
   test-sign-iterate-csr:
     desc: "Iterate over each CSR"
     internal: true
     silent: true
     vars:
-      ref: .CSR
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+      CSR:
+        ref: .CSR
     cmds:
       # First cell in each row: Issuer key size
-      - printf "| {{.ISSUER | upper}} |" >> {{.COMP_MATRIX}}
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "| {{.ISSUER | upper}} |" >> {{.COMP_MATRIX}}
+        {{end}}
       - for: { var: CSR }
         cmd: |
           TEST_CA_DIR=testing/certificates/test-ca
           TEST_CSR_DIR=testing/certificates/test-csr
+          {{if ne .CREATE_COMP_MATRIX "true"}}
           printf "Testing SignCertificate API\nProfile: \"{{.PROFILE}}\"\nCSR: \"{{.ITEM}}\"\nIssuer: \"{{.ISSUER}}\"\n"
+          {{end}}
           RESPONSE=$({{.CLIENT_PATH}} --profile={{.PROFILE}} sign --csr=$TEST_CSR_DIR/{{.ITEM}}.csr --caCert=$TEST_CA_DIR/cert-{{.ISSUER}}.pem --caKey=$TEST_CA_DIR/{{.ISSUER}}.pem)
           if echo "$RESPONSE" | {{.GREP_CMD}} -E 'Sign [Rr]esponse'; then
+            {{if eq .CREATE_COMP_MATRIX "true"}}
             printf " ✅ |" >> {{.COMP_MATRIX}}
+            {{else}}
             echo "✅ Supported"
+            {{end}}
           else
+            {{if eq .CREATE_COMP_MATRIX "true"}}
             printf " ❌ |" >> {{.COMP_MATRIX}}
+            {{else}}
             echo "❌ Not supported"
+            {{end}}
           fi
-      - printf "\n" >> {{.COMP_MATRIX}}
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "\n" >> {{.COMP_MATRIX}}
+        {{end}}
 
   # Test custom subject feature
-  test-sign-certificate-clients-custom-subject:
+  test-sign-certificate-clis-custom-subject:
     desc: "Iterate signing tests over all clients with a custom subject"
     vars:
       ref: .CLIENTS
@@ -457,7 +543,7 @@ tasks:
       - task: build-crypto-broker-server
         vars:
           BRANCH: '{{.BRANCH}}'
-      - task: build-client
+      - task: build-cli
         vars:
           CLIENT: '{{.CLIENT}}'
           BRANCH: '{{.BRANCH}}'
@@ -470,7 +556,7 @@ tasks:
       - task: copy-test-certificates
         vars:
           CLIENT: '{{.CLIENT}}'
-      - task: copy-{{.CLIENT}}-client
+      - task: copy-{{.CLIENT}}-cli
       - cf push --random-route -f deployments/cloud-foundry/{{.CLIENT}}/manifest.yaml -p deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
 
   delete-cf-deployment:
@@ -483,7 +569,7 @@ tasks:
         - task: delete-deployment-folder
           vars:
             CLIENT: '{{.CLIENT}}'
-        - cf delete -r -f crypto-broker-{{.CLIENT}}-client
+        - cf delete -r -f crypto-broker-{{.CLIENT}}-cli
 
   # Internal tasks for deployment to Cloud Foundry
   create-deployment-folder:
@@ -512,19 +598,19 @@ tasks:
       - cp -r testing/certificates deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
 
   # Go specific task
-  copy-go-client:
+  copy-go-cli:
     desc: "Copy the necessary Go client files for Cloud Foundry deployment"
     internal: true
     cmds:
-      - cp crypto-broker-client-go/cli/bin/go-client-cli deployments/cloud-foundry/go/go-deployment
+      - cp crypto-broker-cli-go/bin/go-client-cli deployments/cloud-foundry/go/go-deployment
 
   # Node.js specific tasks
-  copy-js-client:
+  copy-js-cli:
     desc: "Copy the necessary Node.js client files for Cloud Foundry deployment"
     internal: true
     cmds:
-      - cp crypto-broker-client-js/package*.json deployments/cloud-foundry/js/js-deployment/
-      - cp -r crypto-broker-client-js/dist deployments/cloud-foundry/js/js-deployment/
+      - cp crypto-broker-cli-js/package*.json deployments/cloud-foundry/js/js-deployment/
+      - cp -r crypto-broker-cli-js/dist deployments/cloud-foundry/js/js-deployment/
       - task: init-node-modules
 
   init-node-modules:
@@ -535,9 +621,9 @@ tasks:
 
   ################# Kubernetes Deployment ####################
   minikube-images:
-    desc: "Load the docker images into minikube"
+    desc: "Load the docker images into minikube (Note: this might take a while)"
     cmds:
-      - minikube image load ghcr.io/open-crypto-broker/test-app-js ghcr.io/open-crypto-broker/server
+      - minikube image load ghcr.io/open-crypto-broker/test_app_js ghcr.io/open-crypto-broker/test_app_go ghcr.io/open-crypto-broker/server
 
   kube-deploy:
     desc: "Deploys the Kubernetes Crypto Broker"
@@ -560,10 +646,12 @@ tasks:
       - task: build-dependencies
         vars:
           BRANCH: '{{.BRANCH}}'
-      - docker compose -f server.yml -f test_app_js.yml build
+      - docker compose -f server.yml -f test_app_js.yml -f test_app_go.yml build
 
   docker-compose-deploy:
-    desc: "Deploy docker images with docker compose"
+    desc: "Deploy docker images with docker compose (you can optionally specify an image tag with TAG=...)"
+    vars:
+      BRANCH: '{{.BRANCH | default "latest"}}'
     dir: deployments/docker/
     cmds:
-      - docker compose -f server.yml -f test_app_js.yml up
+      - TAG={{.TAG}} docker compose -f server.yml -f test_app_js.yml -f test_app_go.yml up

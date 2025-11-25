@@ -1,5 +1,5 @@
 applications:
-  - name: crypto-broker-go-client
+  - name: crypto-broker-go-cli
     command: './go-client-cli --loop 10 --profile=KAT_SHA3_512 hash "Welcome CryptoBroker"'
     disk_quota: 256M
     instances: 1

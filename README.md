@@ -128,7 +128,7 @@ The `task test-sign-clis` command can build a compatibility matrix for each clie
 The command can take some time, since its complexity is O(n<sup>4</sup>): for each client, each profile will be tested and for each profile each CSR and for each CSR the different CA certificates will be tested.
 The results are automatically gathered and are shown in a [table in the testing folder](testing/compatibility-matrix.md).
 If no CLI argument is provided, the output is displayed on the console (stdout).
-On the other hand, if the `CREATE_COMP_MATRIX` is set to `true`, a new compatibility matrix is generated.
+On the other hand, if the `CREATE_COMP_MATRIX` is set to `true`, a new compatibility matrix is generated with the following command:
 
 ```bash
 task test-sign-clis CREATE_COMP_MATRIX=true

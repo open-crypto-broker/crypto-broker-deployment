@@ -2,7 +2,7 @@
 
 This repository features two purposes.
 On the one hand, it describes how to deploy the Crypto Broker Server and how to use the Crypto Broker client libraries through CLI test applications, as well as how to run both on Cloud Foundry and Kubernetes.
-On the other hand it can perform end-to-end tests which simulate the usage of the Crypto Broker Server and the different Crypto Broker Clients from a user perspective. 
+On the other hand it can perform end-to-end tests which simulate the usage of the Crypto Broker Server and the different Crypto Broker Clients from a user perspective.
 
 ## Cross Compilation and Branch Support
 

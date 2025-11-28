@@ -25,7 +25,7 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        # Client App with hashing request
+        # JS CLI App with hashing request
         - name: "{{ .Values.cliAppJs.name }}-hashing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -45,7 +45,7 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 
-        # Client App with signing request
+        # JS CLI App with signing request
         - name: "{{ .Values.cliAppJs.name }}-signing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -55,6 +55,46 @@ spec:
             - configMapRef:
                 name: {{ include "kube-broker.fullname" . }}-clientconfig
           {{- with .Values.cliAppJs.argSign }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+        # Go CLI App with hashing request
+        - name: "{{ .Values.cliAppGo.name }}-hashing"
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.cliAppGo.image.name }}:{{ .Values.cliAppGo.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.cliAppGo.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "kube-broker.fullname" . }}-clientconfig
+          {{- with .Values.cliAppGo.argHash }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+        # Go CLI App with signing request
+        - name: "{{ .Values.cliAppGo.name }}-signing"
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.cliAppGo.image.name }}:{{ .Values.cliAppGo.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.cliAppGo.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "kube-broker.fullname" . }}-clientconfig
+          {{- with .Values.cliAppGo.argSign }}
           args:
             {{- toYaml . | nindent 12 }}
           {{- end }}

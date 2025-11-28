@@ -50,6 +50,7 @@ cliAppGo:
     - sign
     - --csr=/certificates/end-entity.csr
     - --caCert=/certificates/ca_cert.pem
+    - --caKey=/certificates/private_key.pem
 
 serverApp:
   name: server-app

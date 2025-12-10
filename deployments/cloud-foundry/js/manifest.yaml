@@ -1,7 +1,7 @@
 applications:
   - name: crypto-broker-js-cli
     command: 'node dist/cli.js --loop 10 --profile=KAT_SHA3_512 hash "Welcome CryptoBroker"'
-    disk_quota: 256M
+    disk_quota: 512M
     instances: 1
     memory: 128M
     env:

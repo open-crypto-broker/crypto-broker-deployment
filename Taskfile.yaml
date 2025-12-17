@@ -456,6 +456,7 @@ tasks:
     desc: "Iterate over each CSR"
     internal: true
     silent: true
+    ignore_error: true
     vars:
       CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
       CSR:
@@ -468,25 +469,40 @@ tasks:
         {{end}}
       - for: { var: CSR }
         cmd: |
+          set +e
           TEST_CA_DIR=testing/certificates/test-ca
           TEST_CSR_DIR=testing/certificates/test-csr
           {{if ne .CREATE_COMP_MATRIX "true"}}
-          printf "Testing SignCertificate API\nProfile: \"{{.PROFILE}}\"\nCSR: \"{{.ITEM}}\"\nIssuer: \"{{.ISSUER}}\"\n"
+          echo -e "Profile: {{.PROFILE}}\nCSR: {{.ITEM}}\nIssuer: {{.ISSUER}}"
           {{end}}
-          RESPONSE=$({{.CLIENT_PATH}} --profile={{.PROFILE}} sign --csr=$TEST_CSR_DIR/{{.ITEM}}.csr --caCert=$TEST_CA_DIR/cert-{{.ISSUER}}.pem --caKey=$TEST_CA_DIR/{{.ISSUER}}.pem)
-          if echo "$RESPONSE" | {{.GREP_CMD}} -E 'Sign [Rr]esponse'; then
+          RESPONSE=$({{.CLIENT_PATH}} \
+            --profile={{.PROFILE}} \
+            sign \
+            --csr=$TEST_CSR_DIR/{{.ITEM}}.csr \
+            --caCert=$TEST_CA_DIR/cert-{{.ISSUER}}.pem \
+            --caKey=$TEST_CA_DIR/{{.ISSUER}}.pem \
+            2>&1)
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            {{if eq .CREATE_COMP_MATRIX "true"}}
+            printf " ❌ |" >> {{.COMP_MATRIX}}
+            {{else}}
+            echo -e "❌ Command failed\n"
+            {{end}}
+          elif echo "$RESPONSE" | {{.GREP_CMD}} -E 'Sign [Rr]esponse'; then
             {{if eq .CREATE_COMP_MATRIX "true"}}
             printf " ✅ |" >> {{.COMP_MATRIX}}
             {{else}}
-            echo "✅ Supported"
+            echo -e "✅ Supported\n"
             {{end}}
           else
             {{if eq .CREATE_COMP_MATRIX "true"}}
             printf " ❌ |" >> {{.COMP_MATRIX}}
             {{else}}
-            echo "❌ Not supported"
+            echo -e "❌ Not supported\n"
             {{end}}
           fi
+          set -e
       - |
         {{if eq .CREATE_COMP_MATRIX "true"}}
         printf "\n" >> {{.COMP_MATRIX}}

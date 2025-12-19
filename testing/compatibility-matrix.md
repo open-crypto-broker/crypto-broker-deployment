@@ -1,5 +1,9 @@
 # Clients Compatibility Matrix
 
+This compatibility matrix shows which client supports which profile and which CSR when signing certificates with different CA issuers.
+
+Legend: ✅ - Supported by profile, ❌ - Not Supported by profile
+
 ## Js Client
 
 ### Profile "Default"

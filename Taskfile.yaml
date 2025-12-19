@@ -336,6 +336,8 @@ tasks:
       - |
         {{if eq .CREATE_COMP_MATRIX "true"}}
         printf "# Clients Compatibility Matrix\n\n" >> {{.COMP_MATRIX}}
+        printf "This compatibility matrix shows which client supports which profile and which CSR when signing certificates with different CA issuers.\n\n" >> {{.COMP_MATRIX}}
+        printf "Legend: ✅ - Supported by profile, ❌ - Not Supported by profile\n\n" >> {{.COMP_MATRIX}}
         {{end}}
       - for: { var: CLIENTS }
         task: test-sign-iterate-profiles
@@ -493,13 +495,13 @@ tasks:
             {{if eq .CREATE_COMP_MATRIX "true"}}
             printf " ✅ |" >> {{.COMP_MATRIX}}
             {{else}}
-            echo -e "✅ Supported\n"
+            echo -e "✅ Supported by profile\n"
             {{end}}
           else
             {{if eq .CREATE_COMP_MATRIX "true"}}
             printf " ❌ |" >> {{.COMP_MATRIX}}
             {{else}}
-            echo -e "❌ Not supported\n"
+            echo -e "❌ Not supported by profile\n"
             {{end}}
           fi
           set -e

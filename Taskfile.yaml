@@ -440,7 +440,7 @@ tasks:
       # First cell of the second row
       - |
         {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "| --- | " >> {{.COMP_MATRIX}}
+        printf "| --- |" >> {{.COMP_MATRIX}}
         {{end}}
       # Create the rest of the second row with center alignment
       - for: { var: CSR }

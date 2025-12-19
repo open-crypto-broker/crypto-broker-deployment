@@ -422,7 +422,7 @@ tasks:
       # First cell of header row
       - |
         {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "| Issuer↓ \ CSR➔ | " >> {{.COMP_MATRIX}}
+        printf "| Issuer↓ \ CSR➔ |" >> {{.COMP_MATRIX}}
         {{end}}
       # Create the rest of the header row for the compatibility matrix
       - for: { var: CSR }

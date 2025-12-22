@@ -686,8 +686,10 @@ tasks:
   kube-deploy:
     desc: "Deploys the Kubernetes Crypto Broker"
     dir: deployments/k8s/kube-broker/
+    vars:
+      TAG: '{{.TAG | default "dev"}}'
     cmds:
-      - helm install -f Chart.yaml -f values.yaml crypto-broker --namespace crypto-broker --create-namespace .
+      - helm upgrade --install -f Chart.yaml -f values.yaml --set appVersion="{{.TAG}}" crypto-broker --namespace crypto-broker --create-namespace .
 
   kube-destroy:
     desc: "Destroys the Kubernetes Crypto Broker deployment"

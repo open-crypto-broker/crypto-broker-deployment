@@ -11,6 +11,9 @@ replicaCount: 1
 # Path to crypto profiles
 profilesDir: /app/profiles
 
+# Define version to use for all application images
+appVersion: "dev"
+
 # This is for the secrets for pulling an image from a private repository
 # imagePullSecrets: []
 
@@ -18,8 +21,7 @@ cliAppJs:
   name: test-app-js
   image:
     name: ghcr.io/open-crypto-broker/test_app_js
-    tag: dev
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   argHash:
     - --loop=1000
     - --profile=Default
@@ -37,8 +39,7 @@ cliAppGo:
   name: test-app-go
   image:
     name: ghcr.io/open-crypto-broker/test_app_go
-    tag: dev
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   argHash:
     - --loop=1000
     - --profile=Default
@@ -56,8 +57,7 @@ serverApp:
   name: server-app
   image:
     name: ghcr.io/open-crypto-broker/server
-    tag: dev
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
 
 volumes:
   - name: socket-volume

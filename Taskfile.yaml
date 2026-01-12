@@ -187,6 +187,22 @@ tasks:
 
   ################# End-to-End Tests ####################
   # Public tasks for testing
+  test-health-clis:
+    desc: "Build, run and perform health tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+      OS: '{{.OS}}'
+      ARCH: '{{.ARCH}}'
+    cmds:
+      - task: build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+          OS: '{{.OS}}'
+          ARCH: '{{.ARCH}}'
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
+      - task: test-health-clis-internal
+
   test-hash-clis:
     desc: "Build, run and perform hashing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
@@ -286,6 +302,30 @@ tasks:
     internal: true
     cmds:
       - kill $(ps -e | awk '/cryptobroker/ {print $1}')
+
+  test-health-clis-internal:
+    desc: "Requests the server status using each CLI's health command"
+    internal: true
+    silent: true
+    vars:
+      ref: .CLIENTS
+    cmds:
+      - for: { var: CLIENTS }
+        cmd:
+          |
+          echo "Health check with {{.KEY}} client"
+          RESPONSE=$({{.ITEM}} health)
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            echo "Error: Health check command failed!"
+            exit 1
+          fi
+          if echo "$RESPONSE" | {{.GREP_CMD}} -E '"Status": "SERVING"|"status": 1' ; then
+            echo "✅ Crypto Broker server is healthy"
+          else
+            echo "❌ Crypto Broker server is not healthy"
+            exit 1
+          fi
 
   # Hashing tests from the clients
   test-hashing-clis:

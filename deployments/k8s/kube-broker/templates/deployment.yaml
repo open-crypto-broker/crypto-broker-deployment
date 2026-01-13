@@ -29,7 +29,7 @@ spec:
         - name: "{{ .Values.cliAppJs.name }}-hashing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppJs.image.name }}:{{ .Values.appVersion | default .Chart.AppVersion }}"
+          image: "{{ .Values.cliAppJs.image.name }}:{{ .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.cliAppJs.image.pullPolicy }}
           envFrom:
             - configMapRef:
@@ -49,7 +49,7 @@ spec:
         - name: "{{ .Values.cliAppJs.name }}-signing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppJs.image.name }}:{{ .Values.appVersion | default .Chart.AppVersion }}"
+          image: "{{ .Values.cliAppJs.image.name }}:{{ .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.cliAppJs.image.pullPolicy }}
           envFrom:
             - configMapRef:
@@ -69,7 +69,7 @@ spec:
         - name: "{{ .Values.cliAppGo.name }}-hashing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppGo.image.name }}:{{ .Values.appVersion | default .Chart.AppVersion }}"
+          image: "{{ .Values.cliAppGo.image.name }}:{{ .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.cliAppGo.image.pullPolicy }}
           envFrom:
             - configMapRef:
@@ -89,7 +89,7 @@ spec:
         - name: "{{ .Values.cliAppGo.name }}-signing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppGo.image.name }}:{{ .Values.appVersion | default .Chart.AppVersion }}"
+          image: "{{ .Values.cliAppGo.image.name }}:{{ .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.cliAppGo.image.pullPolicy }}
           envFrom:
             - configMapRef:
@@ -109,7 +109,7 @@ spec:
         - name: {{ .Values.serverApp.name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.serverApp.image.name }}:{{ .Values.appVersion | default .Chart.AppVersion }}"
+          image: "{{ .Values.serverApp.image.name }}:{{ .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.serverApp.image.pullPolicy }}
           envFrom:
             - configMapRef:

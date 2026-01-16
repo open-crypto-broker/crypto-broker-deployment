@@ -96,22 +96,36 @@ The `Taskfile.yaml` file specifies, besides other tasks, end-to-end tests.
 These end-to-end tests clone the different repositories, builds them, starts them and then perform Known-Answer-Tests for hashing or signing a certificate.
 With these tests the complete message flow is visible from start to end.
 
-The following command performs all tests with all combinations of clients and the server:
+### Available Test Commands
+
+A unified test command can be used to run specific E2E tests:
 
 ```bash
-task test-clis
+task test COMMAND=<command>
 ```
 
-The E2E hashing tests for all test apps and server can be executed with:
+Where `<command>` can be one of: `health`, `benchmark`, `hash`, or `sign`.
+
+The following command performs all E2E tests with all combinations of clients and the server:
 
 ```bash
-task test-hash-clis
+task test-all
 ```
 
-The E2E signing tests for all clis and server are executed with:
+Individual test commands can also be run directly:
 
 ```bash
-task test-sign-clis
+# Health check tests
+task test COMMAND=health
+
+# Benchmark tests
+task test COMMAND=benchmark
+
+# Hashing tests
+task test COMMAND=hash
+
+# Signing tests
+task test COMMAND=sign
 ```
 
 These E2E tests are also executed in GitHub Actions.
@@ -124,14 +138,15 @@ task delete-all
 
 ### Clients Compatibility Matrix
 
-The `task test-sign-clis` command can build a compatibility matrix for each client, showing which profile supports which key-sizes for CSRs and also for the test Certificate Authority.
+The signing test command can build a compatibility matrix for each client, showing which profile supports which key-sizes for CSRs and also for the test Certificate Authority.
 The command can take some time, since its complexity is O(n<sup>4</sup>): for each client, each profile will be tested and for each profile each CSR and for each CSR the different CA certificates will be tested.
 The results are automatically gathered and are shown in a [table in the testing folder](testing/compatibility-matrix.md).
-If no CLI argument is provided, the output is displayed on the console (stdout).
-On the other hand, if the `CREATE_COMP_MATRIX` is set to `true`, a new compatibility matrix is generated with the following command:
+
+By default, the output is displayed on the console (stdout).
+To generate a compatibility matrix file, set the `CREATE_COMP_MATRIX` parameter to `true`:
 
 ```bash
-task test-sign-clis CREATE_COMP_MATRIX=true
+task test COMMAND=sign CREATE_COMP_MATRIX=true
 ```
 
 ## Support, Feedback, Contributing

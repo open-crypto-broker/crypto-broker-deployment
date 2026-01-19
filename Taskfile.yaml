@@ -9,6 +9,7 @@ vars:
       go: "./crypto-broker-cli-go/bin/go-client-cli",
       js: "node crypto-broker-cli-js/dist/cli.js"
     }
+  COMMANDS: ["health", "hash", "sign"]
   # Here are the Known-Answer-Tests for the following text (without quotes): "Welcome CryptoBroker"
   KAT:
     map: {
@@ -62,6 +63,33 @@ vars:
       esac
 
 tasks:
+  ################# Utility Tasks ####################
+  default:
+    desc: "Display all available tasks with descriptions"
+    cmds:
+      - task -l
+
+  # Check if all necessary cli tools are installed
+  check-prerequisites:
+    desc: "Verify all required tools are available (go, node, npm, git, cf, docker)"
+    cmds:
+      - |
+        echo "[📋] Checking prerequisites..."
+        MISSING=0
+        for cmd in go node npm git cf docker; do
+          if ! command -v $cmd &> /dev/null; then
+            echo "[❌] Missing: $cmd"
+            MISSING=$((MISSING+1))
+          else
+            echo "[✅] Found: $cmd"
+          fi
+        done
+        if [ $MISSING -gt 0 ]; then
+          echo "[❌] $MISSING prerequisite(s) missing"
+          exit 1
+        fi
+        echo "[✅] All prerequisites found"
+
   ################# Build Crypto Broker CLI Clients ####################
   # Public build task for the CLI test-clients.
   # At first, an already existing cloned repo will be deleted.
@@ -184,15 +212,21 @@ tasks:
         task: delete-cf-deployment
         vars:
           CLIENT: '{{.KEY}}'
+      - echo "[✅] Cleanup complete"
 
   ################# End-to-End Tests ####################
-  # Public tasks for testing
-  test-health-clis:
-    desc: "Build, run and perform health tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
+  # Public tasks for testing the different commands of all clients
+  test:
+    desc: "Build, run and perform tests for a specific COMMAND with all clients. The OS, ARCH, or BRANCH can be also specified. For sign command, use CREATE_COMP_MATRIX=true to generate a compatibility matrix."
+    requires:
+      vars:
+        - name: COMMAND
+          enum: ["health", "benchmark", "hash", "sign"]
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       OS: '{{.OS}}'
       ARCH: '{{.ARCH}}'
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX | default "false"}}'
     cmds:
       - task: build-dependencies
         vars:
@@ -201,50 +235,20 @@ tasks:
           ARCH: '{{.ARCH}}'
       - task: start-crypto-broker-server
       - defer: { task: stop-crypto-broker-server }
-      - task: test-health-clis-internal
-
-  test-hash-clis:
-    desc: "Build, run and perform hashing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS}}'
-      ARCH: '{{.ARCH}}'
-    cmds:
-      - task: build-dependencies
-        vars:
-          BRANCH: '{{.BRANCH}}'
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-      - task: start-crypto-broker-server
-      - defer: { task: stop-crypto-broker-server }
-      - task: test-hashing-clis
-
-  test-sign-clis:
-    desc: "Build, run and perform signing tests for all clients. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS}}'
-      ARCH: '{{.ARCH}}'
-      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-    cmds:
-      - task: build-dependencies
-        vars:
-          BRANCH: '{{.BRANCH}}'
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-      - task: start-crypto-broker-server
-      - defer: { task: stop-crypto-broker-server }
-      - task: test-sign-certificate-clis
+      - task: test-{{.COMMAND}}
         vars:
           CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
 
-  test-clis:
-    desc: "Combine all tests for all clients in one task. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
+  test-all:
+    desc: "Combine all tests for all clients in one task. The OS, ARCH, or BRANCH can be also specified for building the binaries."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       OS: '{{.OS}}'
       ARCH: '{{.ARCH}}'
+      COMMANDS:
+        ref: .COMMANDS
     cmds:
+      - echo "[📋] Starting comprehensive test suite..."
       - task: build-dependencies
         vars:
           BRANCH: '{{.BRANCH}}'
@@ -252,8 +256,8 @@ tasks:
           ARCH: '{{.ARCH}}'
       - task: start-crypto-broker-server
       - defer: { task: stop-crypto-broker-server }
-      - task: test-hashing-clis
-      - task: test-sign-certificate-clis
+      - for: { var: COMMANDS }
+        task: test-{{.ITEM}}
 
   # Tasks for installing/removing GNU grep on macOS
   macos-install-gnu-grep:
@@ -300,10 +304,15 @@ tasks:
   stop-crypto-broker-server:
     desc: "Stop the Crypto Broker Server after all tests were executed"
     internal: true
+    silent: true
     cmds:
-      - kill $(ps -e | awk '/cryptobroker/ {print $1}')
+      - pkill -TERM -f cryptobroker-server || echo "[ℹ️] Server process not running"
+      - sleep 1
+      - pkill -KILL -f cryptobroker-server || true
+      - echo "[✅] Server stopped"
 
-  test-health-clis-internal:
+  # Health check tests from the clients
+  test-health:
     desc: "Requests the server status using each CLI's health command"
     internal: true
     silent: true
@@ -313,22 +322,40 @@ tasks:
       - for: { var: CLIENTS }
         cmd:
           |
-          echo "Health check with {{.KEY}} client"
+          set -e
+          echo "[INFO] Health check with {{.KEY | upper}} client"
           RESPONSE=$({{.ITEM}} health)
-          STATUS=$?
-          if [ $STATUS -ne 0 ]; then
-            echo "Error: Health check command failed!"
-            exit 1
-          fi
           if echo "$RESPONSE" | {{.GREP_CMD}} -E '"Status": "SERVING"|"status": 1' ; then
-            echo "✅ Crypto Broker server is healthy"
+            echo "[✅] Crypto Broker server is healthy"
           else
-            echo "❌ Crypto Broker server is not healthy"
+            echo "[❌] Crypto Broker server is not healthy"
             exit 1
           fi
 
+  # Becnhmark tests from the clients
+  test-benchmark:
+    desc: "Requests the benchmark command using each CLI's benchmark command"
+    internal: true
+    silent: true
+    vars:
+      ref: .CLIENTS
+    cmds:
+      - for: { var: CLIENTS }
+        cmd:
+          |
+          set -e
+          echo "[INFO] Benchmark test with {{.KEY | upper}} client"
+          RESPONSE=$({{.ITEM}} benchmark)
+          if [ $? -ne 0 ]; then
+            echo "[❌] Benchmark command failed"
+            exit 1
+          else
+            echo "$RESPONSE"
+            echo "[✅] Benchmark command successful"
+          fi
+
   # Hashing tests from the clients
-  test-hashing-clis:
+  test-hash:
     desc: "Iterate hashing tests over all clients"
     internal: true
     vars:
@@ -343,6 +370,7 @@ tasks:
   test-hashing-KATs:
     desc: "Iterate over all hashing KATs"
     internal: true
+    silent: true
     vars:
       KAT:
         ref: .KAT
@@ -350,15 +378,18 @@ tasks:
       - for: { var: KAT }
         cmd:
           |
-          echo "Test {{.KEY}}"
-          HASH_RESPONSE=$({{.CLIENT_PATH}} --profile={{.KEY}} hash "Welcome CryptoBroker" | {{.GREP_CMD}} -oP '\"hashValue\":\s?"\K[^"]+')
+          set -e
+          echo "[INFO] Test {{.KEY}}"
+          HASH_RESPONSE=$({{.CLIENT_PATH}} --profile={{.KEY}} hash "Welcome CryptoBroker" | {{.GREP_CMD}} -oP '"hashValue":\s?"\K[^"]+')
           if [[ $HASH_RESPONSE != {{.ITEM}} ]] then
-            echo "Error: Hash values do not match!"
+            echo "[❌] Hash values do not match!"
             exit 1
+          else
+            echo "[✅] Hash value matches expected KAT"
           fi
 
   # Sign certificate tests from the clients
-  test-sign-certificate-clis:
+  test-sign:
     desc: "Iterate signing tests over all clients"
     internal: true
     silent: true
@@ -370,14 +401,14 @@ tasks:
         # Delete previous compatibility matrix
       - |
         {{if eq .CREATE_COMP_MATRIX "true"}}
-        rm {{.COMP_MATRIX}}
+        rm -f {{.COMP_MATRIX}}
         {{end}}
       # Create header for compatibility matrix
       - |
         {{if eq .CREATE_COMP_MATRIX "true"}}
         printf "# Clients Compatibility Matrix\n\n" >> {{.COMP_MATRIX}}
         printf "This compatibility matrix shows which client supports which profile and which CSR when signing certificates with different CA issuers.\n\n" >> {{.COMP_MATRIX}}
-        printf "Legend: ✅ - Supported by profile, ❌ - Not Supported by profile\n\n" >> {{.COMP_MATRIX}}
+        printf "Legend: ✅ - Supported by profile, ❌ - Not supported by profile\n\n" >> {{.COMP_MATRIX}}
         {{end}}
       - for: { var: CLIENTS }
         task: test-sign-iterate-profiles
@@ -389,6 +420,7 @@ tasks:
       - |
         {{if eq .CREATE_COMP_MATRIX "true"}}
         truncate -s -1 {{.COMP_MATRIX}}
+        echo "[✅] Compatibility matrix created at {{.COMP_MATRIX}}"
         {{end}}
 
   test-sign-iterate-profiles:

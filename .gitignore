@@ -19,3 +19,6 @@ deployments/cloud-foundry/**/*-deployment/
 
 # Ignore temporary folder
 tmp/
+
+# Loki data folder
+loki-data/

@@ -1,0 +1,50 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+  resource:
+    attributes:
+      - key: service.namespace
+        value: crypto-broker
+        action: upsert
+
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:9464"
+
+  otlp_http/loki:
+    endpoint: http://loki:3100/loki/otlp
+
+  otlp_grpc/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [prometheus]
+
+    traces:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlp_grpc/tempo]
+
+    logs:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlp_http/loki]

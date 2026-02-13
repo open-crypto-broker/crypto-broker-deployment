@@ -1,14 +1,20 @@
 services:
   crypto-broker-server:
     container_name: crypto-broker-server
-    image: ghcr.io/open-crypto-broker/server:${TAG:-latest}
+    image: ghcr.io/open-crypto-broker/server:${TAG:-dev}
     build:
       dockerfile: docker/Dockerfile
-      context: ../../crypto-broker-server
+      context: ../../../crypto-broker-server
       args:
         CRYPTO_BROKER_PROFILES_DIR: example-profiles
     environment:
       - CRYPTO_BROKER_PROFILES_DIR=/app/profiles
+      - OTEL_SERVICE_NAME=test-crypto-broker-server
+      - OTEL_TRACES_EXPORTER=otlpgrpc
+      - OTEL_TRACES_SAMPLER=always_on
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+    networks:
+      - backend
     restart: always
     volumes:
       - shared_data:/tmp

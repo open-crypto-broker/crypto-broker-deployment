@@ -1,9 +1,14 @@
 x-test-app-go: &app-base
-  image: ghcr.io/open-crypto-broker/test_app_go:${TAG:-latest}
+  image: ghcr.io/open-crypto-broker/test_app_go:${TAG:-dev}
   build:
     dockerfile: docker/Dockerfile
-    context: ../../crypto-broker-cli-go
+    context: ../../../crypto-broker-cli-go
   restart: always
+  environment:
+    - OTEL_SERVICE_NAME=test-app-go
+    - OTEL_TRACES_EXPORTER=otlpgrpc
+    - OTEL_TRACES_SAMPLER=always_on
+    - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
   depends_on:
     - crypto-broker-server
   volumes:
@@ -18,11 +23,13 @@ services:
       - --profile=Default
       - hash
       - Hello Cryptobroker!
+    networks:
+      - backend
   test-app-go-sign:
     <<: *app-base
     container_name: test_app_go-sign
     volumes:
-      - ../../testing/certificates:/certificates:ro
+      - ../../../testing/certificates:/certificates:ro
       - shared_data:/tmp
     command:
       - --loop=1000
@@ -31,6 +38,5 @@ services:
       - --csr=/certificates/test-csr/csr-nist-secp256r1.csr
       - --caCert=/certificates/test-ca/cert-test-CA-nist-secp384r1.pem
       - --caKey=/certificates/test-ca/test-CA-nist-secp384r1.pem
-volumes:
-  shared_data:
-
+    networks:
+      - backend

@@ -90,6 +90,19 @@ tasks:
         fi
         echo "[✅] All prerequisites found"
 
+  # Tasks for installing/removing GNU grep on macOS
+  macos-install-gnu-grep:
+    desc: "Install GNU grep on macOS"
+    platforms: ["darwin"]
+    cmds:
+      - brew install grep
+
+  macos-remove-gnu-grep:
+    desc: "Remove GNU grep from macOS"
+    platforms: ["darwin"]
+    cmds:
+      - brew uninstall grep
+
   ################# Build Crypto Broker CLI Clients ####################
   # Public build task for the CLI test-clients.
   # At first, an already existing cloned repo will be deleted.
@@ -259,19 +272,6 @@ tasks:
       - for: { var: COMMANDS }
         task: test-{{.ITEM}}
 
-  # Tasks for installing/removing GNU grep on macOS
-  macos-install-gnu-grep:
-    desc: "Install GNU grep on macOS"
-    platforms: ["darwin"]
-    cmds:
-      - brew install grep
-
-  macos-remove-gnu-grep:
-    desc: "Remove GNU grep from macOS"
-    platforms: ["darwin"]
-    cmds:
-      - brew uninstall grep
-
   # Internal tasks for end-to-end tests
   # Build Crypto Broker server and the clients for end-to-end tests
   build-dependencies:
@@ -279,6 +279,7 @@ tasks:
     internal: true
     vars:
       ref: .CLIENTS
+    if: '{{eq .CMD "build"}}'
     cmds:
       - task: build-crypto-broker-server
         vars:
@@ -335,7 +336,7 @@ tasks:
             exit 1
           fi
 
-  # Becnhmark tests from the clients
+  # Benchmark tests from the clients
   test-benchmark:
     desc: "Requests the benchmark command using each CLI's benchmark command"
     internal: true
@@ -732,21 +733,52 @@ tasks:
       - helm uninstall crypto-broker -n crypto-broker
 
   ################# Docker-Compose Deployment ####################
-  docker-compose-build:
-    desc: "Build docker images"
-    dir: deployments/docker/
+  docker-jaeger:
+    desc: "Build, deploy, or destroy Crypto Broker docker images with Jaeger"
+    dir: deployments/docker/jaeger/
+    requires:
+      vars:
+        - name: CMD
+          enum: [build, up, down]
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+      TAG: '{{.TAG | default "dev"}}'
+    deps:
+      - task: build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+          CMD: '{{.CMD}}'
+    cmds:
+      - TAG={{.TAG}} docker compose -f jaeger.yml
+          -f server.yml
+          -f test_app_js.yml
+          -f test_app_go.yml {{.CMD}}
+
+  docker-lgtm-build:
+    desc: "Build docker images with LGTM"
+    dir: deployments/docker/lgtm/
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
     cmds:
       - task: build-dependencies
         vars:
           BRANCH: '{{.BRANCH}}'
-      - docker compose -f server.yml -f test_app_js.yml -f test_app_go.yml build
+      - docker compose -f observability.yml
+          -f server.yml
+          -f test_app_js.yml
+          -f test_app_go.yml build
 
-  docker-compose-deploy:
-    desc: "Deploy docker images with docker compose (you can optionally specify an image tag with TAG=...)"
+  docker-lgtm:
+    desc: "Deploy or destroy docker images with docker compose (you can optionally specify an image tag with TAG=...)"
+    dir: deployments/docker/lgtm/
+    requires:
+      vars:
+        - name: CMD
+          enum: [up, down]
     vars:
-      BRANCH: '{{.BRANCH | default "latest"}}'
-    dir: deployments/docker/
+      TAG: '{{.TAG | default "dev"}}'
     cmds:
-      - TAG={{.TAG}} docker compose -f server.yml -f test_app_js.yml -f test_app_go.yml up
+      - TAG={{.TAG}} docker compose -f observability.yml
+        -f server.yml
+        -f test_app_js.yml
+        -f test_app_go.yml {{.CMD}}

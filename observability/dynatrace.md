@@ -189,9 +189,11 @@ This method uses external program "dynatrace collector" that is proxy between cl
 *if you are missing image, please pull it with `docker pull ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.42.0`.*
 4. Set environment variables to following in server
 
+   ```text
 - `OTEL_LOGS_EXPORTER: "otlpgrpc"`
 - `OTEL_EXPORTER_OTLP_ENDPOINT: "localhost:4317"`
-
+   ```
+   
 5. Run server `task run`
 
 ### Usefull links

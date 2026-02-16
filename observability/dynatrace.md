@@ -12,7 +12,7 @@ To successfully go through this guide you will need:
 There are 3 methods to dispatch OTEL traces to dynatrace
 
 - [Dynatrace OTLP API](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/otlp-api/ingest-traces) (HTTPs)
-- [Dynatrace Collector](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/collector) 
+- [Dynatrace Collector](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/collector)
 - OTEL Collector
 
 #### Dynatrace OTLP API
@@ -26,15 +26,15 @@ To make it happen you need to have following environment variables set
 - `OTEL_EXPORTER_OTLP_HEADERS_AUTHORIZATION: "Api-Token <YOUR-TOKEN-HERE>"`
 - `OTEL_TRACES_SAMPLER: "always_on"`
 
-Next, you need to run sever 
+Next, you need to run sever
 
-```
+```shell
 task run
 ```
 
 And from CLI invoke any command
 
-```
+```shell
 task test-sign
 ```
 
@@ -42,10 +42,11 @@ task test-sign
 
 This method uses external program "dynatrace collector" that is proxy between client and dynatrace. In our case we send data to dynatrace collector using gRPC and dynatrace collector will send them to dynatrace using HTTPs
 
-*Please note, that `dynatrace collector` & `otel collector` are meant to listen to the same port, therefore before turning one, turn off another.* 
+*Please note, that `dynatrace collector` & `otel collector` are meant to listen to the same port, therefore before turning one, turn off another.*
 
 1. Create `dynatrace-collector-config.yaml` file
 2. Fill it with following content
+
 ```yaml
 receivers:
   otlp:
@@ -76,9 +77,7 @@ service:
 ```
 
 3. Run collector with docker `docker run -d -p 4317:4317 -v $(pwd)/dynatrace-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.42.0 --config=/etc/otelcol/otel-collector-config.yaml` from directory that contains dynatrace-collector-config.yaml file.
-
 *if you are missing image, please pull it with `docker pull ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.42.0`.*
-
 4. Set environment variables to following in CLI and server
 
 - `OTEL_TRACES_EXPORTER: "otlpgrpc"`
@@ -92,7 +91,6 @@ service:
 #### OTEL Collector
 
 This method uses external program [OTEL collector](https://github.com/open-telemetry/opentelemetry-collector) that is proxy between client and dynatrace. In our case we send data to `OTEL collector` using gRPC and `OTEL collector` will send them to dynatrace using HTTPs.
-
 *Please note, that `dynatrace collector` & `otel collector` are meant to listen to the same port, therefore before turning one, turn off another.* 
 
 1. Create file `otel-collector-config.yaml`

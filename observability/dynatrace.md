@@ -46,7 +46,7 @@ This method uses external program "dynatrace collector" that is proxy between cl
 
 1. Create `dynatrace-collector-config.yaml` file
 2. Fill it with following content
-    ```yaml
+   ```yaml
     receivers:
     otlp:
         protocols:
@@ -73,7 +73,7 @@ This method uses external program "dynatrace collector" that is proxy between cl
         receivers: [otlp]
         processors: []
         exporters: [otlphttp]
-    ```
+   ```
 3. Run collector with docker `docker run -d -p 4317:4317 -v $(pwd)/dynatrace-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.42.0 --config=/etc/otelcol/otel-collector-config.yaml` from directory that contains dynatrace-collector-config.yaml file.
 *if you are missing image, please pull it with `docker pull ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.42.0`.*
 4. Set environment variables to following in CLI and server
@@ -91,7 +91,7 @@ This method uses external program [OTEL collector](https://github.com/open-telem
 
 1. Create file `otel-collector-config.yaml`
 2. Fill it with following content:
-    ```yaml
+   ```yaml
     receivers:
     otlp:
         protocols:
@@ -109,7 +109,7 @@ This method uses external program [OTEL collector](https://github.com/open-telem
         traces:
         receivers: [otlp]
         exporters: [otlphttp]
-    ```
+   ```
 3. Run `OTEL Collector` with `docker run -d --name otel-collector \
   -p 4317:4317 \
   -v $(pwd)/otel-collector-config.yaml:/etc/otel-collector-config.yaml \
@@ -151,7 +151,7 @@ This method uses external program "dynatrace collector" that is proxy between cl
 
 1. Create `dynatrace-collector-config.yaml` file
 2. Fill it with following content
-    ```yaml
+   ```yaml
     receivers:
     otlp:
         protocols:
@@ -178,11 +178,9 @@ This method uses external program "dynatrace collector" that is proxy between cl
         receivers: [otlp]
         processors: []
         exporters: [otlphttp]
-    ```
+   ```
 3. Run collector with docker `docker run -d -p 4317:4317 -v $(pwd)/dynatrace-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.42.0 --config=/etc/otelcol/otel-collector-config.yaml` from directory that contains dynatrace-collector-config.yaml file.
-
 *if you are missing image, please pull it with `docker pull ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.42.0`.*
-
 4. Set environment variables to following in server
 
 - `OTEL_LOGS_EXPORTER: "otlpgrpc"`

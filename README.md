@@ -90,6 +90,39 @@ To uninstall the Helm deployment run:
 task kube-destroy
 ```
 
+## Observability — Jaeger and Grafana
+
+You can run Jaeger and Grafana (with Loki for logs) locally using Taskfile tasks provided in this repository.
+
+Start Jaeger via Taskfile:
+
+```bash
+# Build images for Jaeger (if needed):
+task docker-jaeger CMD=build
+# Start Jaeger:
+task docker-jaeger CMD=up
+# Stop Jaeger:
+task docker-jaeger CMD=down
+```
+
+Start Grafana (LGTM) via Taskfile:
+
+```bash
+# Build Grafana images (optional):
+task docker-grafana CMD=build
+# Start Grafana:
+task docker-grafana CMD=up
+# Stop Grafana:
+task docker-grafana CMD=down
+```
+
+Quick notes:
+
+* Grafana UI: ```http://localhost:3000``` (default login: admin / admin — change password on first login, a default dashboard is already included, but feel free to create your own dashboards based on the available metrics and logs)
+* Jaeger UI: ```http://localhost:16686``` — browse traces and services
+
+These UIs let you explore traces (Jaeger) and dashboards/logs (Grafana + Loki).
+
 ## End-to-End (E2E) Testing
 
 The `Taskfile.yaml` file specifies, besides other tasks, end-to-end tests.

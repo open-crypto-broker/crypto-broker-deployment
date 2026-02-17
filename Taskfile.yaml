@@ -734,7 +734,7 @@ tasks:
 
   ################# Docker-Compose Deployment ####################
   docker-jaeger:
-    desc: "Build, deploy, or destroy Crypto Broker docker images with Jaeger"
+    desc: "Build, deploy, or destroy Crypto Broker docker images with Jaeger. Optionally specify an image tag with TAG=...)"
     dir: deployments/docker/jaeger/
     requires:
       vars:
@@ -754,31 +754,24 @@ tasks:
           -f test_app_js.yml
           -f test_app_go.yml {{.CMD}}
 
-  docker-lgtm-build:
-    desc: "Build docker images with LGTM"
-    dir: deployments/docker/lgtm/
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-    cmds:
-      - task: build-dependencies
-        vars:
-          BRANCH: '{{.BRANCH}}'
-      - docker compose -f observability.yml
-          -f server.yml
-          -f test_app_js.yml
-          -f test_app_go.yml build
-
-  docker-lgtm:
-    desc: "Deploy or destroy docker images with docker compose (you can optionally specify an image tag with TAG=...)"
+  docker-grafana:
+    desc: "Build, deploy, or destroy Crypto Broker docker images with Grafana and the LGTM stack. Optionally specify an image tag with TAG=...)"
     dir: deployments/docker/lgtm/
     requires:
       vars:
         - name: CMD
-          enum: [up, down]
+          enum: [build, up, down]
     vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
       TAG: '{{.TAG | default "dev"}}'
+    deps:
+      - task: build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+          CMD: '{{.CMD}}'
     cmds:
       - TAG={{.TAG}} docker compose -f observability.yml
-        -f server.yml
-        -f test_app_js.yml
-        -f test_app_go.yml {{.CMD}}
+          -f server.yml
+          -f test_app_js.yml
+          -f test_app_go.yml {{.CMD}}
+

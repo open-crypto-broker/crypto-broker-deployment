@@ -19,3 +19,6 @@ deployments/cloud-foundry/**/*-deployment/
 
 # Ignore temporary folder
 tmp/
+
+# Ignore OpenTelemetry Collector binary and related files
+deployments/cloud-foundry/otel-collector/bin

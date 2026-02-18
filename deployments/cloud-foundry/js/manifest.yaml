@@ -1,22 +1,21 @@
 applications:
   - name: crypto-broker-js-cli
+    command: 'node dist/cli.js --loop 500 --profile=KAT_SHA3_512 hash "Welcome CryptoBroker"'
     disk_quota: 1G
     instances: 1
     memory: 1G
+    env:
+      HUSKY: 0
+      OTEL_SERVICE_NAME: "test-app-js"
+      OTEL_TRACES_EXPORTER: "otlpgrpc"
+      OTEL_TRACES_SAMPLER: "always_on"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
+      OTEL_LOGS_EXPORTER: "otlpgrpc"
     buildpacks:
       - nodejs_buildpack
       - binary_buildpack
     health-check-type: process
     process_types: [web]
-    env:
-      HUSKY: 0
-      OTEL_SERVICE_NAME: "test-app-js"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
-      OTEL_TRACES_EXPORTER: "otlpgrpc"
-      OTEL_TRACES_SAMPLER: "always_on"
-      OTEL_LOGS_EXPORTER: "otlpgrpc"
-    command: 'node dist/cli.js --loop 500 --profile=KAT_SHA3_512 hash "Welcome CryptoBroker"'
-
     sidecars:
       - name: otel-collector
         process_types: [web]

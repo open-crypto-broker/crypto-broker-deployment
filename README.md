@@ -47,7 +47,6 @@ task cf-deploy CLIENT=go
 task cf-deploy CLIENT=js
 ```
 
-<<<<<<< HEAD
 This will automatically copy the required binaries, profiles, certificates, and the otel-collector (with its configuration) into the deployment folder before pushing to Cloud Foundry.
 
 To delete the deployment from Cloud Foundry, use:
@@ -58,8 +57,6 @@ task cf-delete CLIENT=go
 task cf-delete CLIENT=js
 ```
 
-=======
->>>>>>> 90f5fd2 (Feat: Add Jaeger and Grafana LGTM docker compose files (#50))
 ### Kubernetes
 
 #### Kubernetes Setup

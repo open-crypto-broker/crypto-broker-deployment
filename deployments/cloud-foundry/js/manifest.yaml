@@ -1,35 +1,62 @@
 applications:
   - name: crypto-broker-js-cli
-    command: 'node dist/cli.js --loop 10 --profile=KAT_SHA3_512 hash "Welcome CryptoBroker"'
-    disk_quota: 512M
+    command: 'node dist/cli.js --loop 500 --profile=KAT_SHA3_512 hash "Welcome CryptoBroker"'
+    disk_quota: 1G
     instances: 1
-    memory: 128M
+    memory: 1G
     env:
       HUSKY: 0
+      OTEL_SERVICE_NAME: "test-app-js"
+      OTEL_TRACES_EXPORTER: "otlpgrpc"
+      OTEL_TRACES_SAMPLER: "always_on"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
+      OTEL_LOGS_EXPORTER: "otlpgrpc"
     buildpacks:
       - nodejs_buildpack
       - binary_buildpack
     health-check-type: process
-    process_types:
-      - web
+    process_types: [web]
     sidecars:
       - name: crypto-broker-server
         health-check-type: process
-        process_types:
-          - web
+        process_types: [web]
+        env:
+          OTEL_SERVICE_NAME: "test-crypto-broker-server"
+          OTEL_TRACES_EXPORTER: "otlpgrpc"
+          OTEL_TRACES_SAMPLER: "always_on"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "localhost:4317"
         command: 'CRYPTO_BROKER_PROFILES_DIR=$PWD ./cryptobroker-server'
+      - name: otel-collector
+        process_types: [web]
+        command: ./otelcol --config=otel-config.yaml
+        memory: 64M
       - name: crypto-broker-client-profile-default
         health-check-type: process
-        process_types:
-          - web
-        command: 'node dist/cli.js --loop 20 --profile=Default sign --csr=certificates/test-csr/csr-rsa-2048.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp384r1.pem --caKey=certificates/test-ca/test-CA-nist-secp384r1.pem'
+        process_types: [web]
+        env:
+          OTEL_SERVICE_NAME: "test-app-js-default-profile"
+          OTEL_TRACES_EXPORTER: "otlpgrpc"
+          OTEL_TRACES_SAMPLER: "always_on"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
+          OTEL_LOGS_EXPORTER: "otlpgrpc"
+        command: 'node dist/cli.js --loop 600 --profile=Default sign --csr=certificates/test-csr/csr-rsa-2048.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp384r1.pem --caKey=certificates/test-ca/test-CA-nist-secp384r1.pem'
       - name: crypto-broker-client-profile-fips-baseline
         health-check-type: process
-        process_types:
-          - web
-        command: 'node dist/cli.js --loop 30 --profile=FIPS-140-3-Baseline sign --csr=certificates/test-csr/csr-rsa-8192.csr --caCert=certificates/test-ca/cert-test-CA-rsa-3072.pem --caKey=certificates/test-ca/test-CA-rsa-3072.pem'
+        process_types: [web]
+        env:
+          OTEL_SERVICE_NAME: "test-app-js-fips-baseline"
+          OTEL_TRACES_EXPORTER: "otlpgrpc"
+          OTEL_TRACES_SAMPLER: "always_on"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
+          OTEL_LOGS_EXPORTER: "otlpgrpc"
+        command: 'node dist/cli.js --loop 700 --profile=FIPS-140-3-Baseline sign --csr=certificates/test-csr/csr-rsa-8192.csr --caCert=certificates/test-ca/cert-test-CA-rsa-3072.pem --caKey=certificates/test-ca/test-CA-rsa-3072.pem'
       - name: crypto-broker-client-profile-fips-strict
         health-check-type: process
-        process_types:
-          - web
-        command: 'node dist/cli.js --loop 40 --profile=FIPS-140-3-Strict sign --csr=certificates/test-csr/csr-rsa-15380.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp521r1.pem --caKey=certificates/test-ca/test-CA-nist-secp521r1.pem'
+        process_types: [web]
+        env:
+          OTEL_SERVICE_NAME: "test-app-js-fips-strict"
+          OTEL_TRACES_EXPORTER: "otlpgrpc"
+          OTEL_TRACES_SAMPLER: "always_on"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
+          OTEL_LOGS_EXPORTER: "otlpgrpc"
+        command: 'node dist/cli.js --loop 800 --profile=FIPS-140-3-Strict sign --csr=certificates/test-csr/csr-rsa-15380.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp521r1.pem --caKey=certificates/test-ca/test-CA-nist-secp521r1.pem'

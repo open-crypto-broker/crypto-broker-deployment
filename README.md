@@ -39,13 +39,22 @@ As it can be seen from the Manifest files, only two things are needed for deploy
 
 For simplicity, in the example manifests both binary and profile are located in the same folder as the `manifest.yaml` file. That way, they can be easily accessed by the CLI when deploying to Cloud Foundry.
 
-In order to deploy the Crypto Broker Server and one of the Crypto Broker test apps, the following task can be executed specifying which test app should be deployed.
-A prerequisite is, that the login to the Cloud Foundry instance happened already.
+To deploy the Crypto Broker Server, a test app, and the OpenTelemetry Collector (otel-collector) to Cloud Foundry, use the following task. Make sure you are logged in to your Cloud Foundry instance first:
 
 ```bash
-task deploy-cf-cryptobroker CLIENT=go
+task cf-deploy CLIENT=go
 # or
-task deploy-cf-cryptobroker CLIENT=js
+task cf-deploy CLIENT=js
+```
+
+This will automatically copy the required binaries, profiles, certificates, and the otel-collector (with its configuration) into the deployment folder before pushing to Cloud Foundry.
+
+To delete the deployment from Cloud Foundry, use:
+
+```bash
+task cf-delete CLIENT=go
+# or
+task cf-delete CLIENT=js
 ```
 
 ### Docker and Kubernetes

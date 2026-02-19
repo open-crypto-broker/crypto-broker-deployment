@@ -626,7 +626,7 @@ tasks:
   # Fifth, the necessary files from the Crypto Broker are copied to the deployment folder.
   # Sixth, the necessary files from the client are copied to the deployment folder.
   # Seventh, the cf CLI is invoked and the app is pushed to Cloud Foundry.
-  deploy-cf-cryptobroker:
+  cf-deploy:
     desc: "Deploy to Cloud Foundry the Crypto Broker server and client specified with CLIENT='', values are 'go', 'js'. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
@@ -658,7 +658,7 @@ tasks:
       - task: copy-otel-collector
       - cf push --random-route -f deployments/cloud-foundry/{{.CLIENT}}/manifest.yaml -p deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
 
-  delete-cf-deployment:
+  cf-delete:
     desc: "Delete the deployment folders and also on Cloud Foundry the deployment of Crypto Broker server and the specified client with CLIENT='', values are 'go', 'js'"
     requires:
       vars:

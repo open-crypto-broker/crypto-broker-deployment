@@ -48,27 +48,14 @@ task deploy-cf-cryptobroker CLIENT=go
 task deploy-cf-cryptobroker CLIENT=js
 ```
 
-### Docker and Kubernetes
+### Kubernetes
 
 #### Kubernetes Setup
 
-For deployment in Docker, the docker compose modules must be installed.
 For deployment in Kubernetes, Kubernetes and Helm must be installed in terminal.
 Kubernetes is installed with Docker-desktop, while Helm can be easily installed as per documentation [Helm Install](https://helm.sh/docs/intro/install/).
 
-#### Docker Compose and Kubernetes Deployment
-
-For a local docker deployment the following tasks can be used.
-The first task will clone and build the Crypto Broker server and the test apps.
-The docker compose files in the `deployments/docker` folder are then used to build the docker images.
-
-```shell
-task docker-compose-build
-task docker-compose-deploy
-```
-
-The `task docker-compose-deploy` will automatically start the compose setup and the output is logged to console.
-In order to stop the docker-compose deployment exit it with `ctrl+c`.
+#### Kubernetes Deployment
 
 These local docker images can be used to be loaded into [minikube](https://minikube.sigs.k8s.io/docs/) and to start with that the Kubernetes cluster.
 Make sure that minikube is up and running (e.g. issue `minikube start`).
@@ -90,7 +77,7 @@ To uninstall the Helm deployment run:
 task kube-destroy
 ```
 
-## Observability — Jaeger and Grafana
+### Docker Compose with Observability — Jaeger and Grafana
 
 You can run Jaeger and Grafana (with Loki for logs) locally using Taskfile tasks provided in this repository.
 

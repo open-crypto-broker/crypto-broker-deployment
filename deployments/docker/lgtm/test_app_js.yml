@@ -6,10 +6,10 @@ x-test-app-js: &app-base
   restart: always
   environment:
     - OTEL_SERVICE_NAME=test-app-js
+    - OTEL_LOGS_EXPORTER=otlpgrpc
     - OTEL_TRACES_EXPORTER=otlpgrpc
     - OTEL_TRACES_SAMPLER=always_on
     - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-    - OTEL_LOGS_EXPORTER=otlpgrpc
   depends_on:
     - crypto-broker-server
   volumes:

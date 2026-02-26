@@ -3,6 +3,8 @@ x-test-app-js: &app-base
   build:
     dockerfile: docker/Dockerfile
     context: ../../../crypto-broker-cli-js
+    secrets:
+      - git_npm_token
   restart: always
   environment:
     - OTEL_SERVICE_NAME=test-app-js
@@ -14,6 +16,10 @@ x-test-app-js: &app-base
     - crypto-broker-server
   volumes:
     - shared_data:/tmp
+
+secrets:
+  git_npm_token:
+    environment: GIT_AUTH_TOKEN
 
 services:
   test-app-js-hash:

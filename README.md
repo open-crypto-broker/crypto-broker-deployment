@@ -150,7 +150,7 @@ By default, the output is displayed on the console (stdout).
 To generate a compatibility matrix file, set the `CREATE_COMP_MATRIX` parameter to `true`:
 
 ```bash
-task test COMMAND=sign CREATE_COMP_MATRIX=true
+task test CMD=sign CREATE_COMP_MATRIX=true
 ```
 
 ## Support, Feedback, Contributing

@@ -232,10 +232,10 @@ tasks:
   ################# End-to-End Tests ####################
   # Public tasks for testing the different commands of all clients
   test:
-    desc: "Build, run and perform tests for a specific COMMAND with all clients. The OS, ARCH, or BRANCH can be also specified. For sign command, use CREATE_COMP_MATRIX=true to generate a compatibility matrix."
+    desc: "Build, run and perform tests for a specific CMD with all clients. The OS, ARCH, or BRANCH can be also specified. For sign command, use CREATE_COMP_MATRIX=true to generate a compatibility matrix."
     requires:
       vars:
-        - name: COMMAND
+        - name: CMD
           enum: ["health", "benchmark", "hash", "sign"]
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
@@ -250,7 +250,7 @@ tasks:
           ARCH: '{{.ARCH}}'
       - task: start-crypto-broker-server
       - defer: { task: stop-crypto-broker-server }
-      - task: test-{{.COMMAND}}
+      - task: test-{{.CMD}}
         vars:
           CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
 
@@ -281,7 +281,6 @@ tasks:
     internal: true
     vars:
       ref: .CLIENTS
-    if: '{{eq .CMD "build"}}'
     cmds:
       - task: build-crypto-broker-server
         vars:
@@ -442,6 +441,8 @@ tasks:
       - |
         {{if eq .CREATE_COMP_MATRIX "true"}}
         printf "## {{.CLIENT | title}} Client\n\n" >> {{.COMP_MATRIX}}
+        {{else}}
+        printf "\n[INFO] Testing client: {{.CLIENT | title}}\n"
         {{end}}
       - for: { var: PROFILES }
         task: test-sign-iterate-issuer
@@ -735,13 +736,9 @@ tasks:
       - helm uninstall crypto-broker -n crypto-broker
 
   ################# Docker-Compose Deployment ####################
-  docker-jaeger:
-    desc: "Build, deploy, or destroy Crypto Broker docker images with Jaeger. Optionally specify an image tag with TAG=...)"
+  docker-jaeger-build:
+    desc: "Build Crypto Broker docker images with Jaeger. Optionally specify an image tag with TAG=...)"
     dir: deployments/docker/jaeger/
-    requires:
-      vars:
-        - name: CMD
-          enum: [build, up, down]
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       TAG: '{{.TAG | default "dev"}}'
@@ -749,20 +746,30 @@ tasks:
       - task: build-dependencies
         vars:
           BRANCH: '{{.BRANCH}}'
-          CMD: '{{.CMD}}'
+    cmds:
+      - TAG={{.TAG}} docker compose -f jaeger.yml
+          -f server.yml
+          -f test_app_js.yml
+          -f test_app_go.yml build
+
+  docker-jaeger-deploy:
+    desc: "Deploy or destroy Crypto Broker docker images with Jaeger. Optionally specify an image tag with TAG=...)"
+    dir: deployments/docker/jaeger/
+    requires:
+      vars:
+        - name: CMD
+          enum: [up, down]
+    vars:
+      TAG: '{{.TAG | default "dev"}}'
     cmds:
       - TAG={{.TAG}} docker compose -f jaeger.yml
           -f server.yml
           -f test_app_js.yml
           -f test_app_go.yml {{.CMD}}
 
-  docker-grafana:
-    desc: "Build, deploy, or destroy Crypto Broker docker images with Grafana and the LGTM stack. Optionally specify an image tag with TAG=...)"
+  docker-grafana-build:
+    desc: "Build Crypto Broker docker images with Grafana and the LGTM stack. Optionally specify an image tag with TAG=...)"
     dir: deployments/docker/lgtm/
-    requires:
-      vars:
-        - name: CMD
-          enum: [build, up, down]
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       TAG: '{{.TAG | default "dev"}}'
@@ -770,7 +777,21 @@ tasks:
       - task: build-dependencies
         vars:
           BRANCH: '{{.BRANCH}}'
-          CMD: '{{.CMD}}'
+    cmds:
+      - TAG={{.TAG}} docker compose -f observability.yml
+          -f server.yml
+          -f test_app_js.yml
+          -f test_app_go.yml build
+
+  docker-grafana-deploy:
+    desc: "Deploy or destroy Crypto Broker docker images with Grafana and the LGTM stack. Optionally specify an image tag with TAG=...)"
+    dir: deployments/docker/lgtm/
+    requires:
+      vars:
+        - name: CMD
+          enum: [up, down]
+    vars:
+      TAG: '{{.TAG | default "dev"}}'
     cmds:
       - TAG={{.TAG}} docker compose -f observability.yml
           -f server.yml

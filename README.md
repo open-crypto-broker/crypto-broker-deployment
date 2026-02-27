@@ -85,22 +85,22 @@ Start Jaeger via Taskfile:
 
 ```bash
 # Build images for Jaeger (if needed):
-task docker-jaeger CMD=build
+task docker-jaeger-build
 # Start Jaeger:
-task docker-jaeger CMD=up
+task docker-jaeger-deploy CMD=up
 # Stop Jaeger:
-task docker-jaeger CMD=down
+task docker-jaeger-deploy CMD=down
 ```
 
 Start Grafana (LGTM) via Taskfile:
 
 ```bash
 # Build Grafana images (optional):
-task docker-grafana CMD=build
+task docker-grafana-build
 # Start Grafana:
-task docker-grafana CMD=up
+task docker-grafana-deploy CMD=up
 # Stop Grafana:
-task docker-grafana CMD=down
+task docker-grafana-deploy CMD=down
 ```
 
 Quick notes:
@@ -121,7 +121,7 @@ With these tests the complete message flow is visible from start to end.
 A unified test command can be used to run specific E2E tests:
 
 ```bash
-task test COMMAND=<command>
+task test CMD=<command>
 ```
 
 Where `<command>` can be one of: `health`, `benchmark`, `hash`, or `sign`.
@@ -130,22 +130,6 @@ The following command performs all E2E tests with all combinations of clients an
 
 ```bash
 task test-all
-```
-
-Individual test commands can also be run directly:
-
-```bash
-# Health check tests
-task test COMMAND=health
-
-# Benchmark tests
-task test COMMAND=benchmark
-
-# Hashing tests
-task test COMMAND=hash
-
-# Signing tests
-task test COMMAND=sign
 ```
 
 These E2E tests are also executed in GitHub Actions.

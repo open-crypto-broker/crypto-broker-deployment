@@ -229,7 +229,7 @@ tasks:
         vars:
           CLIENT: '{{.KEY}}'
       - for: { var: CLIENTS }
-        task: delete-cf-deployment
+        task: cf-delete
         vars:
           CLIENT: '{{.KEY}}'
       - echo "[✅] Cleanup complete"

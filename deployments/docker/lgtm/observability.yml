@@ -1,0 +1,79 @@
+networks:
+  backend:
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.144.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otel/config.yaml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "13133:13133" # health_check
+    depends_on:
+      - loki
+      - tempo
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:13133/"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    networks:
+      - backend
+
+  prometheus:
+    image: prom/prometheus:v3.9.1
+    container_name: prometheus
+    volumes:
+      - ./observability/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - backend
+
+  loki:
+    image: grafana/loki:3.6.7
+    container_name: loki
+    command: -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./observability/loki.yaml:/etc/loki/loki.yaml:ro
+      - ./loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - backend
+
+  tempo:
+    image: grafana/tempo:2.9.0
+    container_name: tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo.yaml:ro
+    ports:
+      - "3200:3200"
+      - "3201:3201"
+    networks:
+      - backend
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: grafana
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/cryptobroker-overview.json
+    volumes:
+      - ./observability/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks:
+      - backend

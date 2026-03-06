@@ -57,27 +57,14 @@ task cf-delete CLIENT=go
 task cf-delete CLIENT=js
 ```
 
-### Docker and Kubernetes
+### Kubernetes
 
 #### Kubernetes Setup
 
-For deployment in Docker, the docker compose modules must be installed.
 For deployment in Kubernetes, Kubernetes and Helm must be installed in terminal.
 Kubernetes is installed with Docker-desktop, while Helm can be easily installed as per documentation [Helm Install](https://helm.sh/docs/intro/install/).
 
-#### Docker Compose and Kubernetes Deployment
-
-For a local docker deployment the following tasks can be used.
-The first task will clone and build the Crypto Broker server and the test apps.
-The docker compose files in the `deployments/docker` folder are then used to build the docker images.
-
-```shell
-task docker-compose-build
-task docker-compose-deploy
-```
-
-The `task docker-compose-deploy` will automatically start the compose setup and the output is logged to console.
-In order to stop the docker-compose deployment exit it with `ctrl+c`.
+#### Kubernetes Deployment
 
 These local docker images can be used to be loaded into [minikube](https://minikube.sigs.k8s.io/docs/) and to start with that the Kubernetes cluster.
 Make sure that minikube is up and running (e.g. issue `minikube start`).
@@ -99,6 +86,39 @@ To uninstall the Helm deployment run:
 task kube-destroy
 ```
 
+### Docker Compose with Observability — Jaeger and Grafana
+
+You can run Jaeger and Grafana (with Loki for logs) locally using Taskfile tasks provided in this repository.
+
+Start Jaeger via Taskfile:
+
+```bash
+# Build images for Jaeger (if needed):
+task docker-jaeger-build
+# Start Jaeger:
+task docker-jaeger-deploy CMD=up
+# Stop Jaeger:
+task docker-jaeger-deploy CMD=down
+```
+
+Start Grafana (LGTM) via Taskfile:
+
+```bash
+# Build Grafana images (optional):
+task docker-grafana-build
+# Start Grafana:
+task docker-grafana-deploy CMD=up
+# Stop Grafana:
+task docker-grafana-deploy CMD=down
+```
+
+Quick notes:
+
+* Grafana UI: ```http://localhost:3000``` (default login: admin / admin — change password on first login, a default dashboard is already included, but feel free to create your own dashboards based on the available metrics and logs)
+* Jaeger UI: ```http://localhost:16686``` — browse traces and services
+
+These UIs let you explore traces (Jaeger) and dashboards/logs (Grafana + Loki).
+
 ## End-to-End (E2E) Testing
 
 The `Taskfile.yaml` file specifies, besides other tasks, end-to-end tests.
@@ -110,7 +130,7 @@ With these tests the complete message flow is visible from start to end.
 A unified test command can be used to run specific E2E tests:
 
 ```bash
-task test COMMAND=<command>
+task test CMD=<command>
 ```
 
 Where `<command>` can be one of: `health`, `benchmark`, `hash`, or `sign`.
@@ -119,22 +139,6 @@ The following command performs all E2E tests with all combinations of clients an
 
 ```bash
 task test-all
-```
-
-Individual test commands can also be run directly:
-
-```bash
-# Health check tests
-task test COMMAND=health
-
-# Benchmark tests
-task test COMMAND=benchmark
-
-# Hashing tests
-task test COMMAND=hash
-
-# Signing tests
-task test COMMAND=sign
 ```
 
 These E2E tests are also executed in GitHub Actions.
@@ -155,7 +159,7 @@ By default, the output is displayed on the console (stdout).
 To generate a compatibility matrix file, set the `CREATE_COMP_MATRIX` parameter to `true`:
 
 ```bash
-task test COMMAND=sign CREATE_COMP_MATRIX=true
+task test CMD=sign CREATE_COMP_MATRIX=true
 ```
 
 ## Support, Feedback, Contributing

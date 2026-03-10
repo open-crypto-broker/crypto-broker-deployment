@@ -63,6 +63,11 @@ vars:
         Darwin*) echo ggrep ;;
         Linux*) echo grep ;;
       esac
+  # OpenTelemetry Collector configuration file path
+  OTEL_VERSION: 0.145.0
+  OTEL_DIST: otelcol
+  OTEL_URL: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v{{.OTEL_VERSION}}/{{.OTEL_DIST}}_{{.OTEL_VERSION}}_linux_amd64.tar.gz
+  OTEL_SHA256: b877c1886e8e41d496f294c7e8c38d85b9db79a97b4e8ee80e36ac67dff9a4de
 
 tasks:
   ################# Utility Tasks ####################
@@ -224,7 +229,7 @@ tasks:
         vars:
           CLIENT: '{{.KEY}}'
       - for: { var: CLIENTS }
-        task: delete-cf-deployment
+        task: cf-delete
         vars:
           CLIENT: '{{.KEY}}'
       - echo "[✅] Cleanup complete"
@@ -625,7 +630,7 @@ tasks:
   # Fifth, the necessary files from the Crypto Broker are copied to the deployment folder.
   # Sixth, the necessary files from the client are copied to the deployment folder.
   # Seventh, the cf CLI is invoked and the app is pushed to Cloud Foundry.
-  deploy-cf-cryptobroker:
+  cf-deploy:
     desc: "Deploy to Cloud Foundry the Crypto Broker server and client specified with CLIENT='', values are 'go', 'js'. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
@@ -654,9 +659,10 @@ tasks:
         vars:
           CLIENT: '{{.CLIENT}}'
       - task: copy-{{.CLIENT}}-cli
+      - task: copy-otel-collector
       - cf push --random-route -f deployments/cloud-foundry/{{.CLIENT}}/manifest.yaml -p deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
 
-  delete-cf-deployment:
+  cf-delete:
     desc: "Delete the deployment folders and also on Cloud Foundry the deployment of Crypto Broker server and the specified client with CLIENT='', values are 'go', 'js'"
     requires:
       vars:
@@ -693,6 +699,25 @@ tasks:
     internal: true
     cmds:
       - cp -r testing/certificates deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+
+  download-otel-collector:
+    desc: "Download and extract the OpenTelemetry Collector binary"
+    internal: true
+    cmds:
+      - curl -L {{.OTEL_URL}} -o otelcol.tar.gz
+      - echo "{{.OTEL_SHA256}}  otelcol.tar.gz" | sha256sum -c -
+      - mkdir -p deployments/cloud-foundry/otel-collector/bin
+      - tar -xzf otelcol.tar.gz -C deployments/cloud-foundry/otel-collector/bin
+      - chmod +x deployments/cloud-foundry/otel-collector/bin/otelcol
+      - rm otelcol.tar.gz
+
+  copy-otel-collector:
+    desc: "Copy the OpenTelemetry Collector and its configuration file to the deployment folder"
+    deps: [download-otel-collector]
+    internal: true
+    cmds:
+      - cp deployments/cloud-foundry/otel-collector/bin/otelcol deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+      - cp deployments/cloud-foundry/otel-collector/otel-config.yaml deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
 
   # Go specific task
   copy-go-cli:

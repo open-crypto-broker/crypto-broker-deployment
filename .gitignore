@@ -16,6 +16,8 @@ crypto-broker-*-*/
 
 # Do not include deployment artifacts
 deployments/cloud-foundry/**/*-deployment/
+# Ignore OpenTelemetry Collector binary and related files
+deployments/cloud-foundry/otel-collector/bin
 
 # Ignore temporary folder
 tmp/

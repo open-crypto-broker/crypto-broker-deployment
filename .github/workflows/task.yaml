@@ -23,5 +23,3 @@ jobs:
 
       - name: Run end-to-end tests
         run: task test-all
-        env:
-          GIT_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

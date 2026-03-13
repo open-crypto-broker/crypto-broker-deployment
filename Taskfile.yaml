@@ -2,15 +2,17 @@
 
 version: '3'
 
-dotenv: [ ".env" ]
-
 vars:
   # Map of clients for each programming language and the path to its executable
   CLIENTS:
-    map: {
-      go: "./crypto-broker-cli-go/bin/go-client-cli",
-      js: "node crypto-broker-cli-js/dist/cli.js"
-    }
+    map:
+      go:
+        cmd: "./crypto-broker-cli-go/bin/go-client-cli"
+        env: ".env.cli-go"
+      js:
+        cmd: "node crypto-broker-cli-js/dist/cli.js"
+        env: ".env.cli-js"
+
   COMMANDS: ["health", "hash", "sign"]
   # Here are the Known-Answer-Tests for the following text (without quotes): "Welcome CryptoBroker"
   KAT:
@@ -305,9 +307,7 @@ tasks:
   start-crypto-broker-server:
     desc: "Start the Crypto Broker Server with a custom test profile"
     internal: true
-    env:
-      OTEL_TRACES_EXPORTER: "console"
-      OTEL_TRACES_SAMPLER: "always_off"
+    dotenv: ['.env.server']
     cmds:
       - CRYPTO_BROKER_PROFILES_DIR=$PWD/testing/profiles ./crypto-broker-server/bin/cryptobroker-server &
 
@@ -334,7 +334,12 @@ tasks:
           |
           set -e
           echo "[INFO] Health check with {{.KEY | upper}} client"
-          RESPONSE=$({{.ITEM}} health)
+
+          set -a
+          source {{.ITEM.env}}
+          set +a
+
+          RESPONSE=$({{.ITEM.cmd}} health)
           if echo "$RESPONSE" | {{.GREP_CMD}} -E '"Status": "SERVING"|"status": 1' ; then
             echo "[✅] Crypto Broker server is healthy"
           else
@@ -355,7 +360,12 @@ tasks:
           |
           set -e
           echo "[INFO] Benchmark test with {{.KEY | upper}} client"
-          RESPONSE=$({{.ITEM}} benchmark)
+
+          set -a
+          source {{.ITEM.env}}
+          set +a
+
+          RESPONSE=$({{.ITEM.cmd}} benchmark)
           if [ $? -ne 0 ]; then
             echo "[❌] Benchmark command failed"
             exit 1
@@ -375,7 +385,8 @@ tasks:
       - for: { var: CLIENTS }
         task: test-hashing-KATs
         vars:
-          CLIENT_PATH: '{{.ITEM}}'
+          CLIENT_PATH: '{{.ITEM.cmd}}'
+          CLIENT_ENV: '{{.ITEM.env}}'
 
   test-hashing-KATs:
     desc: "Iterate over all hashing KATs"
@@ -390,6 +401,11 @@ tasks:
           |
           set -e
           echo "[INFO] Test {{.KEY}}"
+
+          set -a
+          source {{.CLIENT_ENV}}
+          set +a
+
           HASH_RESPONSE=$({{.CLIENT_PATH}} --profile={{.KEY}} hash "Welcome CryptoBroker" | {{.GREP_CMD}} -oP '"hashValue":\s?"\K[^"]+')
           if [[ $HASH_RESPONSE != {{.ITEM}} ]] then
             echo "[❌] Hash values do not match!"
@@ -425,7 +441,8 @@ tasks:
         vars:
           CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
           CLIENT: '{{.KEY}}'
-          CLIENT_PATH: '{{.ITEM}}'
+          CLIENT_PATH: '{{.ITEM.cmd}}'
+          CLIENT_ENV: '{{.ITEM.env}}'
       # Remove duplicate newline at EOF (otherwise Markdownlint will complain)
       - |
         {{if eq .CREATE_COMP_MATRIX "true"}}
@@ -454,6 +471,7 @@ tasks:
         vars:
           CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
           CLIENT_PATH: '{{.CLIENT_PATH}}'
+          CLIENT_ENV: '{{.CLIENT_ENV}}'
           PROFILE: '{{.ITEM}}'
 
   test-sign-iterate-issuer:
@@ -480,6 +498,7 @@ tasks:
         vars:
           CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
           CLIENT_PATH: '{{.CLIENT_PATH}}'
+          CLIENT_ENV: '{{.CLIENT_ENV}}'
           PROFILE: '{{.PROFILE}}'
           ISSUER: '{{.ITEM}}'
       - |
@@ -558,6 +577,11 @@ tasks:
           set +e
           TEST_CA_DIR=testing/certificates/test-ca
           TEST_CSR_DIR=testing/certificates/test-csr
+
+          set -a
+          source {{.CLIENT_ENV}}
+          set +a
+
           {{if ne .CREATE_COMP_MATRIX "true"}}
           echo -e "Profile: {{.PROFILE}}\nCSR: {{.ITEM}}\nIssuer: {{.ISSUER}}"
           {{end}}

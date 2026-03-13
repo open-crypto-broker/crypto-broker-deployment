@@ -10,9 +10,12 @@ services:
     environment:
       - CRYPTO_BROKER_PROFILES_DIR=/app/profiles
       - OTEL_SERVICE_NAME=test-crypto-broker-server
-      - OTEL_LOGS_EXPORTER=otlpgrpc
+      - OTEL_LOGS_EXPORTER=console,otlpgrpc
       - OTEL_TRACES_EXPORTER=otlpgrpc
       - OTEL_TRACES_SAMPLER=always_on
+      - OTEL_TRACES_SAMPLER_ARG=1.0
+      - OTEL_METRICS_EXPORTER=otlpgrpc
+      - OTEL_METRICS_INTERVAL=10s
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
     networks:
       - backend

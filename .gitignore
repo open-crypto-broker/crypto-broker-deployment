@@ -22,5 +22,10 @@ deployments/cloud-foundry/otel-collector/bin
 # Ignore temporary folder
 tmp/
 
+# Ignore real .env files
+.env.server
+.env.cli-go
+.env.cli-js
+
 # Loki data folder
 loki-data/

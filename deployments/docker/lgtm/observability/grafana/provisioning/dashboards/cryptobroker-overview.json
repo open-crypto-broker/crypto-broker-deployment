@@ -390,7 +390,7 @@
               "scope": "resource",
               "tag": "service.name",
               "value": [
-                "crypto-broker-cli-go"
+                "test-app-go"
               ],
               "valueType": "string"
             },
@@ -538,7 +538,7 @@
               "scope": "resource",
               "tag": "service.name",
               "value": [
-                "crypto-broker-cli-go"
+                "test-app-go"
               ],
               "valueType": "string"
             },
@@ -578,6 +578,86 @@
         "x": 0,
         "y": 16
       },
+      "id": 19,
+      "options": {
+        "dedupStrategy": "none",
+        "enableInfiniteScrolling": false,
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "direction": "backward",
+          "editorMode": "builder",
+          "expr": "{service_name=\"test-app-js\"} |= ``",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "JS CLI Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 21,
+      "options": {
+        "dedupStrategy": "none",
+        "enableInfiniteScrolling": false,
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "direction": "backward",
+          "editorMode": "builder",
+          "expr": "{service_name=\"test-app-go\"} |= ``",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Go CLI Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
       "id": 18,
       "options": {
         "dedupStrategy": "none",
@@ -615,49 +695,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 16
-      },
-      "id": 19,
-      "options": {
-        "dedupStrategy": "none",
-        "enableInfiniteScrolling": false,
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": false,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "direction": "backward",
-          "editorMode": "builder",
-          "expr": "{service_name=\"test-app-js\"} |= ``",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "JS CLI Logs",
-      "type": "logs"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 32
       },
       "id": 20,
       "options": {
@@ -721,7 +761,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 40
       },
       "id": 17,
       "options": {
@@ -818,7 +858,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 52
       },
       "id": 13,
       "options": {
@@ -852,7 +892,7 @@
               "scope": "resource",
               "tag": "service.name",
               "value": [
-                "crypto-broker-cli-go"
+                "test-app-go"
               ],
               "valueType": "string"
             },
@@ -870,7 +910,7 @@
           "limit": 100,
           "metricsQueryType": "range",
           "query": "{resource.service.name=\"crypto-broker-cli-go\" && name=\"CLI.Hash\"}",
-          "queryType": "traceql",
+          "queryType": "traceqlSearch",
           "refId": "Traces: Go CLI Hash",
           "tableType": "traces"
         }
@@ -915,7 +955,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 56
+        "y": 64
       },
       "id": 16,
       "options": {
@@ -1012,7 +1052,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 68
+        "y": 76
       },
       "id": 12,
       "options": {
@@ -1046,7 +1086,7 @@
               "scope": "resource",
               "tag": "service.name",
               "value": [
-                "crypto-broker-cli-go"
+                "test-app-go"
               ],
               "valueType": "string"
             },
@@ -1106,12 +1146,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 12,
+        "h": 11,
         "w": 24,
         "x": 0,
-        "y": 80
+        "y": 88
       },
-      "id": 11,
+      "id": 10,
       "options": {
         "cellHeight": "sm",
         "footer": {
@@ -1133,7 +1173,7 @@
           },
           "filters": [
             {
-              "id": "83d8d02b",
+              "id": "abd3362d",
               "operator": "=",
               "scope": "span"
             },
@@ -1143,7 +1183,7 @@
               "scope": "resource",
               "tag": "service.name",
               "value": [
-                "crypto-broker-server"
+                "test-crypto-broker-server"
               ],
               "valueType": "string"
             },
@@ -1153,27 +1193,19 @@
               "scope": "span",
               "tag": "name",
               "value": [
-                "CryptoBrokerServer.Sign"
+                "CryptoBrokerServer.Hash"
               ],
               "valueType": "string"
-            },
-            {
-              "id": "status",
-              "operator": "=",
-              "scope": "intrinsic",
-              "tag": "status",
-              "valueType": "keyword"
             }
           ],
           "limit": 100,
           "metricsQueryType": "range",
-          "query": "{resource.service.name=\"crypto-broker-server\" && name=\"CryptoBrokerServer.Sign\" && resource.service.name!=\"crypto-broker-cli-go\"}",
           "queryType": "traceqlSearch",
           "refId": "A",
           "tableType": "traces"
         }
       ],
-      "title": "Crypto Broker Server - Sign",
+      "title": "Crypto Broker Server - Hash",
       "type": "table"
     },
     {
@@ -1210,12 +1242,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
+        "h": 12,
         "w": 24,
         "x": 0,
-        "y": 92
+        "y": 99
       },
-      "id": 10,
+      "id": 11,
       "options": {
         "cellHeight": "sm",
         "footer": {
@@ -1237,7 +1269,7 @@
           },
           "filters": [
             {
-              "id": "abd3362d",
+              "id": "83d8d02b",
               "operator": "=",
               "scope": "span"
             },
@@ -1247,7 +1279,7 @@
               "scope": "resource",
               "tag": "service.name",
               "value": [
-                "crypto-broker-server"
+                "test-crypto-broker-server"
               ],
               "valueType": "string"
             },
@@ -1257,19 +1289,27 @@
               "scope": "span",
               "tag": "name",
               "value": [
-                "CryptoBrokerServer.Hash"
+                "CryptoBrokerServer.Sign"
               ],
               "valueType": "string"
+            },
+            {
+              "id": "status",
+              "operator": "=",
+              "scope": "intrinsic",
+              "tag": "status",
+              "valueType": "keyword"
             }
           ],
           "limit": 100,
           "metricsQueryType": "range",
+          "query": "{resource.service.name=\"crypto-broker-server\" && name=\"CryptoBrokerServer.Sign\" && resource.service.name!=\"crypto-broker-cli-go\"}",
           "queryType": "traceqlSearch",
           "refId": "A",
           "tableType": "traces"
         }
       ],
-      "title": "Crypto Broker Server - Hash",
+      "title": "Crypto Broker Server - Sign",
       "type": "table"
     }
   ],
@@ -1291,5 +1331,5 @@
   "timezone": "",
   "title": "CryptoBroker Services Overview",
   "uid": "cryptobroker-overview",
-  "version": 8
+  "version": 9
 }

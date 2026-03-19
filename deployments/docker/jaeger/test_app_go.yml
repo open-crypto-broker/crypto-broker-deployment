@@ -6,6 +6,7 @@ x-test-app-go: &app-base
   restart: always
   environment:
     - OTEL_SERVICE_NAME=test-app-go
+    - OTEL_LOGS_EXPORTER=console,otlpgrpc
     - OTEL_TRACES_EXPORTER=otlpgrpc
     - OTEL_TRACES_SAMPLER=always_on
     - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317

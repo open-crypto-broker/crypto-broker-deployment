@@ -21,13 +21,13 @@ cliAppJs:
     pullPolicy: IfNotPresent
   argHash:
     - --loop=1000
-    - --profile=Default
     - hash
+    - --profile=Default
     - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
   argSign:
     - --loop=1000
-    - --profile=Default
     - sign
+    - --profile=Default
     - --csr=/certificates/end-entity.csr
     - --caCert=/certificates/ca_cert.pem
     - --caKey=/certificates/private_key.pem
@@ -39,13 +39,13 @@ cliAppGo:
     pullPolicy: IfNotPresent
   argHash:
     - --loop=1000
-    - --profile=Default
     - hash
+    - --profile=Default
     - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
   argSign:
     - --loop=1000
-    - --profile=Default
     - sign
+    - --profile=Default
     - --csr=/certificates/end-entity.csr
     - --caCert=/certificates/ca_cert.pem
     - --caKey=/certificates/private_key.pem

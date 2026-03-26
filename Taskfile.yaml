@@ -250,6 +250,7 @@ tasks:
       ARCH: '{{.ARCH}}'
       CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX | default "false"}}'
     cmds:
+      - task: create-env-files
       - task: build-dependencies
         vars:
           BRANCH: '{{.BRANCH}}'
@@ -271,6 +272,7 @@ tasks:
         ref: .COMMANDS
     cmds:
       - echo "[📋] Starting comprehensive test suite..."
+      - task: create-env-files
       - task: build-dependencies
         vars:
           BRANCH: '{{.BRANCH}}'
@@ -282,6 +284,39 @@ tasks:
         task: test-{{.ITEM}}
 
   # Internal tasks for end-to-end tests
+  # Create .env files with console-only settings when they don't already exist (e.g. in CI).
+  create-env-files:
+    desc: "Create .env files with console-only settings for CI testing"
+    internal: true
+    status:
+      - test -f .env.server
+      - test -f .env.cli-go
+      - test -f .env.cli-js
+    cmds:
+      - |
+        cat > .env.server <<'EOL'
+        ENABLE_FIPS_MODE="false"
+        OTEL_SERVICE_NAME="crypto-broker-server"
+        OTEL_LOGS_EXPORTER="console"
+        OTEL_METRICS_EXPORTER="none"
+        OTEL_TRACES_EXPORTER="none"
+        EOL
+        echo "[✅] Created .env.server"
+      - |
+        cat > .env.cli-go <<'EOL'
+        OTEL_SERVICE_NAME="crypto-broker-cli-go"
+        OTEL_LOGS_EXPORTER="console"
+        OTEL_TRACES_EXPORTER="none"
+        EOL
+        echo "[✅] Created .env.cli-go"
+      - |
+        cat > .env.cli-js <<'EOL'
+        OTEL_SERVICE_NAME="crypto-broker-cli-js"
+        OTEL_LOGS_EXPORTER="console"
+        OTEL_TRACES_EXPORTER="none"
+        EOL
+        echo "[✅] Created .env.cli-js"
+
   # Build Crypto Broker server and the clients for end-to-end tests
   build-dependencies:
     desc: "Build all dependencies: clients and server, depending on the specified branch"

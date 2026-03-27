@@ -10,7 +10,7 @@ vars:
         cmd: "./crypto-broker-cli-go/bin/go-client-cli"
         env: ".env.cli-go"
       js:
-        cmd: "node crypto-broker-cli-js/dist/cli.js"
+        cmd: "./crypto-broker-cli-js/bin/js-client-cli"
         env: ".env.cli-js"
 
   COMMANDS: ["health", "hash", "sign"]
@@ -169,7 +169,7 @@ tasks:
     internal: true
     dir: crypto-broker-cli-js/
     cmds:
-      - npm install
+      - task build
 
   ################# Build Crypto Broker Server ####################
   # Public build task for Crypto Broker server.
@@ -787,18 +787,10 @@ tasks:
 
   # Node.js specific tasks
   copy-js-cli:
-    desc: "Copy the necessary Node.js client files for Cloud Foundry deployment"
+    desc: "Copy the Node.js client binary for Cloud Foundry deployment"
     internal: true
     cmds:
-      - cp crypto-broker-cli-js/package*.json deployments/cloud-foundry/js/js-deployment/
-      - cp -r crypto-broker-cli-js/dist deployments/cloud-foundry/js/js-deployment/
-      - task: init-node-modules
-
-  init-node-modules:
-    internal: true
-    dir: deployments/cloud-foundry/js/js-deployment
-    cmds:
-      - npm ci --omit=dev --ignore-scripts
+      - cp crypto-broker-cli-js/bin/js-client-cli deployments/cloud-foundry/js/js-deployment/
 
   ################# Kubernetes Deployment ####################
   minikube-images:

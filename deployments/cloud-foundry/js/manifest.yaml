@@ -9,13 +9,12 @@ applications:
     health-check-type: process
     process_types: [web]
     env:
-      HUSKY: 0
       OTEL_SERVICE_NAME: "test-app-js"
       OTEL_LOGS_EXPORTER: "otlpgrpc"
       OTEL_TRACES_EXPORTER: "otlpgrpc"
       OTEL_TRACES_SAMPLER: "always_on"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
-    command: 'node dist/cli.js --loop 500 hash --profile=KAT_SHA3_512 "Welcome CryptoBroker"'
+    command: './js-client-cli --loop 500 hash --profile=KAT_SHA3_512 "Welcome CryptoBroker"'
 
     sidecars:
       - name: otel-collector
@@ -43,7 +42,7 @@ applications:
           OTEL_TRACES_EXPORTER: "otlpgrpc"
           OTEL_TRACES_SAMPLER: "always_on"
           OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
-        command: 'node dist/cli.js --loop 600 sign --profile=Default --csr=certificates/test-csr/csr-rsa-2048.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp384r1.pem --caKey=certificates/test-ca/test-CA-nist-secp384r1.pem'
+        command: './js-client-cli --loop 600 sign --profile=Default --csr=certificates/test-csr/csr-rsa-2048.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp384r1.pem --caKey=certificates/test-ca/test-CA-nist-secp384r1.pem'
       - name: crypto-broker-client-profile-fips-baseline
         health-check-type: process
         process_types: [web]
@@ -53,7 +52,7 @@ applications:
           OTEL_TRACES_EXPORTER: "otlpgrpc"
           OTEL_TRACES_SAMPLER: "always_on"
           OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
-        command: 'node dist/cli.js --loop 700 sign --profile=FIPS-140-3-Baseline --csr=certificates/test-csr/csr-rsa-8192.csr --caCert=certificates/test-ca/cert-test-CA-rsa-3072.pem --caKey=certificates/test-ca/test-CA-rsa-3072.pem'
+        command: './js-client-cli --loop 700 sign --profile=FIPS-140-3-Baseline --csr=certificates/test-csr/csr-rsa-8192.csr --caCert=certificates/test-ca/cert-test-CA-rsa-3072.pem --caKey=certificates/test-ca/test-CA-rsa-3072.pem'
       - name: crypto-broker-client-profile-fips-strict
         health-check-type: process
         process_types: [web]
@@ -63,4 +62,4 @@ applications:
           OTEL_TRACES_EXPORTER: "otlpgrpc"
           OTEL_TRACES_SAMPLER: "always_on"
           OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
-        command: 'node dist/cli.js --loop 800 sign --profile=FIPS-140-3-Strict --csr=certificates/test-csr/csr-rsa-15380.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp521r1.pem --caKey=certificates/test-ca/test-CA-nist-secp521r1.pem'
+        command: './js-client-cli --loop 800 sign --profile=FIPS-140-3-Strict --csr=certificates/test-csr/csr-rsa-15380.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp521r1.pem --caKey=certificates/test-ca/test-CA-nist-secp521r1.pem'

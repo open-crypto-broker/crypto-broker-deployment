@@ -10,13 +10,13 @@ jobs:
 
     steps:
       - name: Install Task
-        uses: go-task/setup-task@v1
+        uses: go-task/setup-task@v2
         with:
           version: '3.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run end-to-end tests
         run: task test-all

@@ -375,7 +375,7 @@ tasks:
           set +a
 
           RESPONSE=$({{.ITEM.cmd}} health)
-          if echo "$RESPONSE" | {{.GREP_CMD}} -E '"Status": "SERVING"|"status": 1' ; then
+          if echo "$RESPONSE" | {{.GREP_CMD}} -E '"Status":"SERVING"|"status": 1' ; then
             echo "[✅] Crypto Broker server is healthy"
           else
             echo "[❌] Crypto Broker server is not healthy"

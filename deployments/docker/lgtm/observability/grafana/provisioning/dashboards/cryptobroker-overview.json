@@ -17,138 +17,126 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "id": 1,
   "links": [],
   "panels": [
     {
-      "datasource": {
-        "type": "tempo",
-        "uid": "P214B5B846CF3925F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "points",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 8,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
+      "collapsed": false,
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 1,
+        "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 15,
+      "id": 100,
+      "panels": [],
+      "title": "Server Metrics",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Rate of crypto requests per second, grouped by gRPC method",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "req/s",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "id": 101,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
           "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.6.0",
       "targets": [
         {
           "datasource": {
-            "type": "tempo",
-            "uid": "P214B5B846CF3925F"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "filters": [
-            {
-              "id": "0dc48365",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": [
-                "test-app-js"
-              ],
-              "valueType": "string"
-            },
-            {
-              "id": "span-name",
-              "operator": "=",
-              "scope": "span",
-              "tag": "name",
-              "value": [
-                "CLI.Hash"
-              ],
-              "valueType": "string"
-            }
-          ],
-          "limit": 250,
-          "metricsQueryType": "range",
-          "queryType": "traceqlSearch",
-          "refId": "Go-CLI Hash",
-          "tableType": "traces"
+          "editorMode": "code",
+          "expr": "sum(rate(crypto_requests_total[$__rate_interval])) by (rpc_method)",
+          "legendFormat": "{{rpc_method}}",
+          "range": true,
+          "refId": "A"
         }
       ],
-      "title": "JS CLI Hash",
+      "title": "Request Rate",
       "type": "timeseries"
     },
     {
       "datasource": {
-        "type": "tempo",
-        "uid": "P214B5B846CF3925F"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
+      "description": "Latency percentiles for crypto requests, grouped by gRPC method",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -162,8 +150,8 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
-            "drawStyle": "points",
-            "fillOpacity": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -171,13 +159,132 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 8,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "auto",
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "id": 102,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum(rate(crypto_request_duration_seconds_bucket[$__rate_interval])) by (le, rpc_method))",
+          "legendFormat": "p50 {{rpc_method}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(crypto_request_duration_seconds_bucket[$__rate_interval])) by (le, rpc_method))",
+          "legendFormat": "p95 {{rpc_method}}",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(crypto_request_duration_seconds_bucket[$__rate_interval])) by (le, rpc_method))",
+          "legendFormat": "p99 {{rpc_method}}",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Request Duration (p50 / p95 / p99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Rate of crypto operation errors per second, grouped by method and error type",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "errors/s",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -196,397 +303,1340 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 1
               }
             ]
-          }
+          },
+          "unit": "reqps"
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "Duration"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 103,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(crypto_operations_errors_total[$__rate_interval])) by (rpc_method, error_type)",
+          "legendFormat": "{{rpc_method}} - {{error_type}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Error Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Current memory usage of the Crypto Broker Server process",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
             },
-            "properties": [
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
               {
-                "id": "custom.hideFrom",
-                "value": {
+                "color": "green"
+              },
+              {
+                "color": "orange",
+                "value": 104857600
+              },
+              {
+                "color": "red",
+                "value": 524288000
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 104,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "crypto_memory_usage_bytes",
+          "legendFormat": "Memory Usage",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Memory Usage",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "id": 105,
+      "panels": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "points",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
                   "legend": false,
                   "tooltip": false,
-                  "viz": true
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 8,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
                 }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
               }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "id": 14,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 18
+          },
+          "id": 15,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "filters": [
+                {
+                  "id": "0dc48365",
+                  "operator": "=",
+                  "scope": "span"
+                },
+                {
+                  "id": "service-name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "tag": "service.name",
+                  "value": [
+                    "test-app-js"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "operator": "=",
+                  "scope": "span",
+                  "tag": "name",
+                  "value": [
+                    "CLI.Hash"
+                  ],
+                  "valueType": "string"
+                }
+              ],
+              "limit": 250,
+              "metricsQueryType": "range",
+              "queryType": "traceqlSearch",
+              "refId": "Go-CLI Hash",
+              "tableType": "traces"
+            }
+          ],
+          "title": "JS CLI Hash",
+          "type": "timeseries"
         },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
         {
           "datasource": {
             "type": "tempo",
-            "uid": "P214B5B846CF3925F"
+            "uid": "tempo"
           },
-          "filters": [
-            {
-              "id": "55852ff1",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": [
-                "test-app-js"
-              ],
-              "valueType": "string"
-            },
-            {
-              "id": "span-name",
-              "operator": "=",
-              "scope": "span",
-              "tag": "name",
-              "value": [
-                "CLI.Sign"
-              ],
-              "valueType": "string"
-            }
-          ],
-          "limit": 250,
-          "metricsQueryType": "range",
-          "queryType": "traceqlSearch",
-          "refId": "Go-CLI Sign",
-          "tableType": "traces"
-        }
-      ],
-      "title": "JS CLI Sign",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "tempo",
-        "uid": "P214B5B846CF3925F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "points",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 8,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
               },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 8
-      },
-      "id": 8,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "tempo",
-            "uid": "P214B5B846CF3925F"
-          },
-          "filters": [
-            {
-              "id": "0dc48365",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": [
-                "test-app-go"
-              ],
-              "valueType": "string"
-            },
-            {
-              "id": "span-name",
-              "operator": "=",
-              "scope": "span",
-              "tag": "name",
-              "value": [
-                "CLI.Hash"
-              ],
-              "valueType": "string"
-            }
-          ],
-          "limit": 250,
-          "metricsQueryType": "range",
-          "queryType": "traceqlSearch",
-          "refId": "Go-CLI Hash",
-          "tableType": "traces"
-        }
-      ],
-      "title": "Go CLI Hash",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "tempo",
-        "uid": "P214B5B846CF3925F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "points",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 8,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "Duration"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "points",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
                   "legend": false,
                   "tooltip": false,
-                  "viz": true
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 8,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
                 }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "__systemRef": "hideSeriesFrom",
+                "matcher": {
+                  "id": "byNames",
+                  "options": {
+                    "mode": "exclude",
+                    "names": [
+                      "Duration"
+                    ],
+                    "prefix": "All except:",
+                    "readOnly": true
+                  }
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
               }
             ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 8
-      },
-      "id": 9,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 18
+          },
+          "id": 14,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "filters": [
+                {
+                  "id": "55852ff1",
+                  "operator": "=",
+                  "scope": "span"
+                },
+                {
+                  "id": "service-name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "tag": "service.name",
+                  "value": [
+                    "test-app-js"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "operator": "=",
+                  "scope": "span",
+                  "tag": "name",
+                  "value": [
+                    "CLI.Sign"
+                  ],
+                  "valueType": "string"
+                }
+              ],
+              "limit": 250,
+              "metricsQueryType": "range",
+              "queryType": "traceqlSearch",
+              "refId": "Go-CLI Sign",
+              "tableType": "traces"
+            }
+          ],
+          "title": "JS CLI Sign",
+          "type": "timeseries"
         },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
         {
           "datasource": {
             "type": "tempo",
-            "uid": "P214B5B846CF3925F"
+            "uid": "tempo"
           },
-          "filters": [
-            {
-              "id": "55852ff1",
-              "operator": "=",
-              "scope": "span"
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "points",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 8,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
             },
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": [
-                "test-app-go"
-              ],
-              "valueType": "string"
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 26
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
             },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
             {
-              "id": "span-name",
-              "operator": "=",
-              "scope": "span",
-              "tag": "name",
-              "value": [
-                "CLI.Sign"
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "filters": [
+                {
+                  "id": "0dc48365",
+                  "operator": "=",
+                  "scope": "span"
+                },
+                {
+                  "id": "service-name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "tag": "service.name",
+                  "value": [
+                    "test-app-go"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "operator": "=",
+                  "scope": "span",
+                  "tag": "name",
+                  "value": [
+                    "CLI.Hash"
+                  ],
+                  "valueType": "string"
+                }
               ],
-              "valueType": "string"
+              "limit": 250,
+              "metricsQueryType": "range",
+              "queryType": "traceqlSearch",
+              "refId": "Go-CLI Hash",
+              "tableType": "traces"
             }
           ],
-          "limit": 250,
-          "metricsQueryType": "range",
-          "queryType": "traceqlSearch",
-          "refId": "Go-CLI Sign",
-          "tableType": "traces"
+          "title": "Go CLI Hash",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "points",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 8,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "__systemRef": "hideSeriesFrom",
+                "matcher": {
+                  "id": "byNames",
+                  "options": {
+                    "mode": "exclude",
+                    "names": [
+                      "Duration"
+                    ],
+                    "prefix": "All except:",
+                    "readOnly": true
+                  }
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 26
+          },
+          "id": 9,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "filters": [
+                {
+                  "id": "55852ff1",
+                  "operator": "=",
+                  "scope": "span"
+                },
+                {
+                  "id": "service-name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "tag": "service.name",
+                  "value": [
+                    "test-app-go"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "operator": "=",
+                  "scope": "span",
+                  "tag": "name",
+                  "value": [
+                    "CLI.Sign"
+                  ],
+                  "valueType": "string"
+                }
+              ],
+              "limit": 250,
+              "metricsQueryType": "range",
+              "queryType": "traceqlSearch",
+              "refId": "Go-CLI Sign",
+              "tableType": "traces"
+            }
+          ],
+          "title": "Go CLI Sign",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 34
+          },
+          "id": 17,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "filters": [
+                {
+                  "id": "17a23a74",
+                  "operator": "=",
+                  "scope": "span"
+                },
+                {
+                  "id": "service-name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "tag": "service.name",
+                  "value": [
+                    "test-app-js"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "operator": "=",
+                  "scope": "span",
+                  "tag": "name",
+                  "value": [
+                    "CLI.Hash"
+                  ],
+                  "valueType": "string"
+                }
+              ],
+              "limit": 100,
+              "metricsQueryType": "range",
+              "query": "{resource.service.name=\"crypto-broker-cli-go\" && name=\"CLI.Hash\"}",
+              "queryType": "traceqlSearch",
+              "refId": "Traces: Go CLI Hash",
+              "tableType": "traces"
+            }
+          ],
+          "title": "JS CLI Hash Traces",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 46
+          },
+          "id": 13,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "filters": [
+                {
+                  "id": "17a23a74",
+                  "operator": "=",
+                  "scope": "span"
+                },
+                {
+                  "id": "service-name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "tag": "service.name",
+                  "value": [
+                    "test-app-go"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "operator": "=",
+                  "scope": "span",
+                  "tag": "name",
+                  "value": [
+                    "CLI.Hash"
+                  ],
+                  "valueType": "string"
+                }
+              ],
+              "limit": 100,
+              "metricsQueryType": "range",
+              "query": "{resource.service.name=\"crypto-broker-cli-go\" && name=\"CLI.Hash\"}",
+              "queryType": "traceqlSearch",
+              "refId": "Traces: Go CLI Hash",
+              "tableType": "traces"
+            }
+          ],
+          "title": "Go CLI Hash Traces",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 58
+          },
+          "id": 16,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "filters": [
+                {
+                  "id": "17a23a74",
+                  "operator": "=",
+                  "scope": "span"
+                },
+                {
+                  "id": "service-name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "tag": "service.name",
+                  "value": [
+                    "test-app-js"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "operator": "=",
+                  "scope": "span",
+                  "tag": "name",
+                  "value": [
+                    "CLI.Sign"
+                  ],
+                  "valueType": "string"
+                }
+              ],
+              "limit": 100,
+              "metricsQueryType": "range",
+              "query": "{}",
+              "queryType": "traceqlSearch",
+              "refId": "Traces: Go CLI Sign",
+              "tableType": "traces"
+            }
+          ],
+          "title": "JS CLI Sign Traces",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 70
+          },
+          "id": 12,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "filters": [
+                {
+                  "id": "17a23a74",
+                  "operator": "=",
+                  "scope": "span"
+                },
+                {
+                  "id": "service-name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "tag": "service.name",
+                  "value": [
+                    "test-app-go"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "operator": "=",
+                  "scope": "span",
+                  "tag": "name",
+                  "value": [
+                    "CLI.Sign"
+                  ],
+                  "valueType": "string"
+                }
+              ],
+              "limit": 100,
+              "metricsQueryType": "range",
+              "query": "{}",
+              "queryType": "traceqlSearch",
+              "refId": "Traces: Go CLI Sign",
+              "tableType": "traces"
+            }
+          ],
+          "title": "Go CLI Sign Traces",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 82
+          },
+          "id": 10,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "filters": [
+                {
+                  "id": "abd3362d",
+                  "operator": "=",
+                  "scope": "span"
+                },
+                {
+                  "id": "service-name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "tag": "service.name",
+                  "value": [
+                    "test-crypto-broker-server"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "operator": "=",
+                  "scope": "span",
+                  "tag": "name",
+                  "value": [
+                    "CryptoBrokerServer.Hash"
+                  ],
+                  "valueType": "string"
+                }
+              ],
+              "limit": 100,
+              "metricsQueryType": "range",
+              "queryType": "traceqlSearch",
+              "refId": "A",
+              "tableType": "traces"
+            }
+          ],
+          "title": "Crypto Broker Server - Hash",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 93
+          },
+          "id": 11,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "filters": [
+                {
+                  "id": "83d8d02b",
+                  "operator": "=",
+                  "scope": "span"
+                },
+                {
+                  "id": "service-name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "tag": "service.name",
+                  "value": [
+                    "test-crypto-broker-server"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "operator": "=",
+                  "scope": "span",
+                  "tag": "name",
+                  "value": [
+                    "CryptoBrokerServer.Sign"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "status",
+                  "operator": "=",
+                  "scope": "intrinsic",
+                  "tag": "status",
+                  "valueType": "keyword"
+                }
+              ],
+              "limit": 100,
+              "metricsQueryType": "range",
+              "query": "{resource.service.name=\"crypto-broker-server\" && name=\"CryptoBrokerServer.Sign\" && resource.service.name!=\"crypto-broker-cli-go\"}",
+              "queryType": "traceqlSearch",
+              "refId": "A",
+              "tableType": "traces"
+            }
+          ],
+          "title": "Crypto Broker Server - Sign",
+          "type": "table"
         }
       ],
-      "title": "Go CLI Sign",
-      "type": "timeseries"
+      "title": "Traces",
+      "type": "row"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 106,
+      "panels": [],
+      "title": "Logs",
+      "type": "row"
     },
     {
       "datasource": {
         "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
+        "uid": "loki"
       },
       "fieldConfig": {
         "defaults": {},
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 10,
+        "w": 24,
         "x": 0,
-        "y": 16
+        "y": 19
       },
-      "id": 19,
+      "id": 107,
       "options": {
         "dedupStrategy": "none",
         "enableInfiniteScrolling": false,
         "enableLogDetails": true,
         "prettifyLogMessage": false,
         "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": false,
+        "showLabels": true,
+        "showTime": true,
         "sortOrder": "Descending",
         "wrapLogMessage": false
       },
@@ -594,734 +1644,68 @@
       "targets": [
         {
           "direction": "backward",
-          "editorMode": "builder",
-          "expr": "{service_name=\"test-app-js\"} |= ``",
+          "editorMode": "code",
+          "expr": "{service_name=~\"$service\"}",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "JS CLI Logs",
+      "title": "Service Logs",
       "type": "logs"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 16
-      },
-      "id": 21,
-      "options": {
-        "dedupStrategy": "none",
-        "enableInfiniteScrolling": false,
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": false,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "direction": "backward",
-          "editorMode": "builder",
-          "expr": "{service_name=\"test-app-go\"} |= ``",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "Go CLI Logs",
-      "type": "logs"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 24
-      },
-      "id": 18,
-      "options": {
-        "dedupStrategy": "none",
-        "enableInfiniteScrolling": false,
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": false,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "direction": "backward",
-          "editorMode": "builder",
-          "expr": "{service_name=\"test-crypto-broker-server\"} |= ``",
-          "maxLines": 1000,
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "Crypto Broker Server Logs",
-      "type": "logs"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 32
-      },
-      "id": 20,
-      "options": {
-        "dedupStrategy": "none",
-        "enableInfiniteScrolling": false,
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": false,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "direction": "backward",
-          "editorMode": "builder",
-          "expr": "{service_namespace=\"crypto-broker\"} |= ``",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "All Logs",
-      "type": "logs"
-    },
-    {
-      "datasource": {
-        "type": "tempo",
-        "uid": "P214B5B846CF3925F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 40
-      },
-      "id": 17,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "tempo",
-            "uid": "P214B5B846CF3925F"
-          },
-          "filters": [
-            {
-              "id": "17a23a74",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": [
-                "test-app-js"
-              ],
-              "valueType": "string"
-            },
-            {
-              "id": "span-name",
-              "operator": "=",
-              "scope": "span",
-              "tag": "name",
-              "value": [
-                "CLI.Hash"
-              ],
-              "valueType": "string"
-            }
-          ],
-          "limit": 100,
-          "metricsQueryType": "range",
-          "query": "{resource.service.name=\"crypto-broker-cli-go\" && name=\"CLI.Hash\"}",
-          "queryType": "traceqlSearch",
-          "refId": "Traces: Go CLI Hash",
-          "tableType": "traces"
-        }
-      ],
-      "title": "JS CLI Hash",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "tempo",
-        "uid": "P214B5B846CF3925F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 52
-      },
-      "id": 13,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "tempo",
-            "uid": "P214B5B846CF3925F"
-          },
-          "filters": [
-            {
-              "id": "17a23a74",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": [
-                "test-app-go"
-              ],
-              "valueType": "string"
-            },
-            {
-              "id": "span-name",
-              "operator": "=",
-              "scope": "span",
-              "tag": "name",
-              "value": [
-                "CLI.Hash"
-              ],
-              "valueType": "string"
-            }
-          ],
-          "limit": 100,
-          "metricsQueryType": "range",
-          "query": "{resource.service.name=\"crypto-broker-cli-go\" && name=\"CLI.Hash\"}",
-          "queryType": "traceqlSearch",
-          "refId": "Traces: Go CLI Hash",
-          "tableType": "traces"
-        }
-      ],
-      "title": "Go CLI Hash",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "tempo",
-        "uid": "P214B5B846CF3925F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 64
-      },
-      "id": 16,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "tempo",
-            "uid": "P214B5B846CF3925F"
-          },
-          "filters": [
-            {
-              "id": "17a23a74",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": [
-                "test-app-js"
-              ],
-              "valueType": "string"
-            },
-            {
-              "id": "span-name",
-              "operator": "=",
-              "scope": "span",
-              "tag": "name",
-              "value": [
-                "CLI.Sign"
-              ],
-              "valueType": "string"
-            }
-          ],
-          "limit": 100,
-          "metricsQueryType": "range",
-          "query": "{}",
-          "queryType": "traceqlSearch",
-          "refId": "Traces: Go CLI Sign",
-          "tableType": "traces"
-        }
-      ],
-      "title": "JS CLI Sign",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "tempo",
-        "uid": "P214B5B846CF3925F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 76
-      },
-      "id": 12,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "tempo",
-            "uid": "P214B5B846CF3925F"
-          },
-          "filters": [
-            {
-              "id": "17a23a74",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": [
-                "test-app-go"
-              ],
-              "valueType": "string"
-            },
-            {
-              "id": "span-name",
-              "operator": "=",
-              "scope": "span",
-              "tag": "name",
-              "value": [
-                "CLI.Sign"
-              ],
-              "valueType": "string"
-            }
-          ],
-          "limit": 100,
-          "metricsQueryType": "range",
-          "query": "{}",
-          "queryType": "traceqlSearch",
-          "refId": "Traces: Go CLI Sign",
-          "tableType": "traces"
-        }
-      ],
-      "title": "Go CLI Sign",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "tempo",
-        "uid": "P214B5B846CF3925F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 11,
-        "w": 24,
-        "x": 0,
-        "y": 88
-      },
-      "id": 10,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "tempo",
-            "uid": "P214B5B846CF3925F"
-          },
-          "filters": [
-            {
-              "id": "abd3362d",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": [
-                "test-crypto-broker-server"
-              ],
-              "valueType": "string"
-            },
-            {
-              "id": "span-name",
-              "operator": "=",
-              "scope": "span",
-              "tag": "name",
-              "value": [
-                "CryptoBrokerServer.Hash"
-              ],
-              "valueType": "string"
-            }
-          ],
-          "limit": 100,
-          "metricsQueryType": "range",
-          "queryType": "traceqlSearch",
-          "refId": "A",
-          "tableType": "traces"
-        }
-      ],
-      "title": "Crypto Broker Server - Hash",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "tempo",
-        "uid": "P214B5B846CF3925F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 99
-      },
-      "id": 11,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "tempo",
-            "uid": "P214B5B846CF3925F"
-          },
-          "filters": [
-            {
-              "id": "83d8d02b",
-              "operator": "=",
-              "scope": "span"
-            },
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": [
-                "test-crypto-broker-server"
-              ],
-              "valueType": "string"
-            },
-            {
-              "id": "span-name",
-              "operator": "=",
-              "scope": "span",
-              "tag": "name",
-              "value": [
-                "CryptoBrokerServer.Sign"
-              ],
-              "valueType": "string"
-            },
-            {
-              "id": "status",
-              "operator": "=",
-              "scope": "intrinsic",
-              "tag": "status",
-              "valueType": "keyword"
-            }
-          ],
-          "limit": 100,
-          "metricsQueryType": "range",
-          "query": "{resource.service.name=\"crypto-broker-server\" && name=\"CryptoBrokerServer.Sign\" && resource.service.name!=\"crypto-broker-cli-go\"}",
-          "queryType": "traceqlSearch",
-          "refId": "A",
-          "tableType": "traces"
-        }
-      ],
-      "title": "Crypto Broker Server - Sign",
-      "type": "table"
     }
   ],
   "preload": false,
-  "refresh": "auto",
+  "refresh": "10s",
   "schemaVersion": 41,
   "tags": [
     "crypto-broker",
     "monitoring"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "description": "Filter logs by service name",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Service",
+        "multi": true,
+        "name": "service",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          },
+          {
+            "selected": false,
+            "text": "test-app-js",
+            "value": "test-app-js"
+          },
+          {
+            "selected": false,
+            "text": "test-app-go",
+            "value": "test-app-go"
+          },
+          {
+            "selected": false,
+            "text": "test-crypto-broker-server",
+            "value": "test-crypto-broker-server"
+          }
+        ],
+        "query": "test-app-js,test-app-go,test-crypto-broker-server",
+        "queryValue": "",
+        "type": "custom"
+      }
+    ]
   },
   "time": {
     "from": "now-5m",
@@ -1331,5 +1715,5 @@
   "timezone": "",
   "title": "CryptoBroker Services Overview",
   "uid": "cryptobroker-overview",
-  "version": 9
+  "version": 3
 }

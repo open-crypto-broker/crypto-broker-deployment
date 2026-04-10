@@ -114,10 +114,8 @@ task docker-grafana-deploy CMD=down
 
 Quick notes:
 
-* Grafana UI: ```http://localhost:3000``` (default login: admin / admin — change password on first login, a default dashboard is already included, but feel free to create your own dashboards based on the available metrics and logs)
+* Grafana UI: ```http://localhost:3000``` (default login: admin / admin — a pre-built dashboard covering server metrics, traces, and logs is included)
 * Jaeger UI: ```http://localhost:16686``` — browse traces and services
-
-These UIs let you explore traces (Jaeger) and dashboards/logs (Grafana + Loki).
 
 ## End-to-End (E2E) Testing
 

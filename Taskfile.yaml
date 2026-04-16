@@ -35,9 +35,9 @@ vars:
     "Default",
     "KSA-MODERATE-2020",
     "KSA-ADVANCED-2020",
-    "FIPS-140-3-Baseline",
-    "FIPS-140-3-Medium",
-    "FIPS-140-3-Strict"
+    "FIPS-140-3-128bit",
+    "FIPS-140-3-192bit",
+    "FIPS-140-3-256bit"
   ]
   CSR: [
     "csr-rsa-2048",

@@ -163,13 +163,13 @@
       BasicConstraints:
         CA: false
 
-# FIPS-140-3 Baseline
+# FIPS-140-3 128bit
 #   Goal: Provide 128-bit security.
 #   Hash: sha-256, sha-512/256, sha3-256.
 #   RSA: >= 3072 bit
 #   ECDSA: 256-bit - 383-bit
 #   Reference: NIST_SP_800_57, Table 2 on Page 54-55, Table 3 on Page 56
-- Name: FIPS-140-3-Baseline
+- Name: FIPS-140-3-128bit
   Settings:
     CryptoLibrary: native
   API:
@@ -198,13 +198,13 @@
       BasicConstraints:
         CA: false
 
-# FIPS-140-3 Medium
+# FIPS-140-3 192bit
 #   Goal: Provide 192-bit security.
 #   Hash: sha-384, sha3-384.
 #   RSA: >= 8192 bit
 #   ECDSA: 384-bit - 521-bit
 #   Reference: NIST_SP_800_57, Table 2 on Page 54-55, Table 3 on Page 56
-- Name: FIPS-140-3-Medium
+- Name: FIPS-140-3-192bit
   Settings:
     CryptoLibrary: native
   API:
@@ -233,13 +233,13 @@
       BasicConstraints:
         CA: false
 
-# FIPS-140-3 Strict
+# FIPS-140-3 256bit
 #   Goal: Provide 256-bit security.
 #   Hash: sha-512, sha3-512.
 #   RSA: 15380-bit
 #   ECDSA: >= 512-bit
 #   Reference: NIST_SP_800_57, Table 2 on Page 54-55, Table 3 on Page 56
-- Name: FIPS-140-3-Strict
+- Name: FIPS-140-3-256bit
   Settings:
     CryptoLibrary: native
   API:

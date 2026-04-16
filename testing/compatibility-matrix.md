@@ -33,7 +33,7 @@ Legend: ✅ - Supported by profile, ❌ - Not Supported by profile
 | TEST-CA-NIST-SECP384R1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | TEST-CA-NIST-SECP521R1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-### Profile "FIPS-140-3-Baseline"
+### Profile "FIPS-140-3-128bit"
 
 | Issuer↓ \ CSR➔ | CSR-RSA-2048 | CSR-RSA-3072 | CSR-RSA-4096 | CSR-RSA-8192 | CSR-RSA-15380 | CSR-NIST-SECP224R1 | CSR-NIST-SECP256R1 | CSR-NIST-SECP384R1 | CSR-NIST-SECP521R1 |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -42,7 +42,7 @@ Legend: ✅ - Supported by profile, ❌ - Not Supported by profile
 | TEST-CA-NIST-SECP384R1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | TEST-CA-NIST-SECP521R1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
-### Profile "FIPS-140-3-Medium"
+### Profile "FIPS-140-3-192bit"
 
 | Issuer↓ \ CSR➔ | CSR-RSA-2048 | CSR-RSA-3072 | CSR-RSA-4096 | CSR-RSA-8192 | CSR-RSA-15380 | CSR-NIST-SECP224R1 | CSR-NIST-SECP256R1 | CSR-NIST-SECP384R1 | CSR-NIST-SECP521R1 |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -51,7 +51,7 @@ Legend: ✅ - Supported by profile, ❌ - Not Supported by profile
 | TEST-CA-NIST-SECP384R1 | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | TEST-CA-NIST-SECP521R1 | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 
-### Profile "FIPS-140-3-Strict"
+### Profile "FIPS-140-3-256bit"
 
 | Issuer↓ \ CSR➔ | CSR-RSA-2048 | CSR-RSA-3072 | CSR-RSA-4096 | CSR-RSA-8192 | CSR-RSA-15380 | CSR-NIST-SECP224R1 | CSR-NIST-SECP256R1 | CSR-NIST-SECP384R1 | CSR-NIST-SECP521R1 |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -89,7 +89,7 @@ Legend: ✅ - Supported by profile, ❌ - Not Supported by profile
 | TEST-CA-NIST-SECP384R1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | TEST-CA-NIST-SECP521R1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-### Profile "FIPS-140-3-Baseline"
+### Profile "FIPS-140-3-128bit"
 
 | Issuer↓ \ CSR➔ | CSR-RSA-2048 | CSR-RSA-3072 | CSR-RSA-4096 | CSR-RSA-8192 | CSR-RSA-15380 | CSR-NIST-SECP224R1 | CSR-NIST-SECP256R1 | CSR-NIST-SECP384R1 | CSR-NIST-SECP521R1 |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -98,7 +98,7 @@ Legend: ✅ - Supported by profile, ❌ - Not Supported by profile
 | TEST-CA-NIST-SECP384R1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | TEST-CA-NIST-SECP521R1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
-### Profile "FIPS-140-3-Medium"
+### Profile "FIPS-140-3-192bit"
 
 | Issuer↓ \ CSR➔ | CSR-RSA-2048 | CSR-RSA-3072 | CSR-RSA-4096 | CSR-RSA-8192 | CSR-RSA-15380 | CSR-NIST-SECP224R1 | CSR-NIST-SECP256R1 | CSR-NIST-SECP384R1 | CSR-NIST-SECP521R1 |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -107,7 +107,7 @@ Legend: ✅ - Supported by profile, ❌ - Not Supported by profile
 | TEST-CA-NIST-SECP384R1 | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | TEST-CA-NIST-SECP521R1 | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 
-### Profile "FIPS-140-3-Strict"
+### Profile "FIPS-140-3-256bit"
 
 | Issuer↓ \ CSR➔ | CSR-RSA-2048 | CSR-RSA-3072 | CSR-RSA-4096 | CSR-RSA-8192 | CSR-RSA-15380 | CSR-NIST-SECP224R1 | CSR-NIST-SECP256R1 | CSR-NIST-SECP384R1 | CSR-NIST-SECP521R1 |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |

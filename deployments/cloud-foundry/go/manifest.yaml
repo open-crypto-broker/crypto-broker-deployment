@@ -51,7 +51,7 @@ applications:
           OTEL_TRACES_EXPORTER: "otlpgrpc"
           OTEL_TRACES_SAMPLER: "always_on"
           OTEL_EXPORTER_OTLP_ENDPOINT: "localhost:4317"
-        command: './go-client-cli --loop 700 sign --profile=FIPS-140-3-Baseline --csr=certificates/test-csr/csr-rsa-8192.csr --caCert=certificates/test-ca/cert-test-CA-rsa-3072.pem --caKey=certificates/test-ca/test-CA-rsa-3072.pem'
+        command: './go-client-cli --loop 700 sign --profile=FIPS-140-3-128bit --csr=certificates/test-csr/csr-rsa-8192.csr --caCert=certificates/test-ca/cert-test-CA-rsa-3072.pem --caKey=certificates/test-ca/test-CA-rsa-3072.pem'
       - name: crypto-broker-client-profile-fips-strict
         health-check-type: process
         process_types: [web]
@@ -61,4 +61,4 @@ applications:
           OTEL_TRACES_EXPORTER: "otlpgrpc"
           OTEL_TRACES_SAMPLER: "always_on"
           OTEL_EXPORTER_OTLP_ENDPOINT: "localhost:4317"
-        command: './go-client-cli --loop 800 sign --profile=FIPS-140-3-Strict --csr=certificates/test-csr/csr-rsa-15380.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp521r1.pem --caKey=certificates/test-ca/test-CA-nist-secp521r1.pem'
+        command: './go-client-cli --loop 800 sign --profile=FIPS-140-3-256bit --csr=certificates/test-csr/csr-rsa-15380.csr --caCert=certificates/test-ca/cert-test-CA-nist-secp521r1.pem --caKey=certificates/test-ca/test-CA-nist-secp521r1.pem'

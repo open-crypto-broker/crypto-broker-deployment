@@ -3,10 +3,10 @@
 
 # Docker Hub image pushed by the `lgtm-push` Taskfile task.
 # Format: <dockerhub-username>/crypto-broker-lgtm:latest
-docker_image: anselmetueno249/crypto-broker-lgtm:latest
+docker_image: mydockerhub/crypto-broker-lgtm:latest
 
 # CF domain for your BTP subaccount, e.g. cfapps.eu12.hana.ondemand.com
 cf_domain: cfapps.eu12.hana.ondemand.com
 
 # Grafana admin password (min 8 chars recommended)
-grafana_admin_password: Initial1
+grafana_admin_password: mypassword

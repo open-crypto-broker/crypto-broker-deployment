@@ -1,0 +1,12 @@
+# Copy this file to vars.yaml and fill in the values.
+# vars.yaml is gitignored — never commit credentials.
+
+# Docker Hub image pushed by the `lgtm-push` Taskfile task.
+# Format: <dockerhub-username>/crypto-broker-lgtm:latest
+docker_image: yourdockerhubid/crypto-broker-lgtm:latest
+
+# CF domain for your BTP subaccount, e.g. cfapps.eu12.hana.ondemand.com
+cf_domain: cfapps.eu12.hana.ondemand.com
+
+# Grafana admin password (min 8 chars recommended)
+grafana_admin_password: changeme

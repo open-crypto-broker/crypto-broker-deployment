@@ -375,7 +375,7 @@ tasks:
           set +a
 
           RESPONSE=$({{.ITEM.cmd}} health)
-          if echo "$RESPONSE" | {{.GREP_CMD}} -E '"Status":\s?"SERVING"|"status": 1' ; then
+          if echo "$RESPONSE" | {{.GREP_CMD}} -E '("status"||"Status"):\s?"SERVING"' ; then
             echo "[✅] Crypto Broker server is healthy"
           else
             echo "[❌] Crypto Broker server is not healthy"
@@ -634,7 +634,7 @@ tasks:
             {{else}}
             echo -e "❌ Command failed\n"
             {{end}}
-          elif echo "$RESPONSE" | {{.GREP_CMD}} -E 'Sign [Rr]esponse'; then
+          elif echo "$RESPONSE" | {{.GREP_CMD}} -E 'signedCertificate'; then
             {{if eq .CREATE_COMP_MATRIX "true"}}
             printf " ✅ |" >> {{.COMP_MATRIX}}
             {{else}}

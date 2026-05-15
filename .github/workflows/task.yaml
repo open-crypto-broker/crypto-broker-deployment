@@ -4,10 +4,15 @@ on:
   schedule:
     - cron: '0 3 * * *' # Run this pipeline every day at 03:00
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 permissions: {}
 
 jobs:
   task-pipeline:
+    name: Task CI Pipeline
     permissions: {}
     runs-on: ubuntu-latest
 

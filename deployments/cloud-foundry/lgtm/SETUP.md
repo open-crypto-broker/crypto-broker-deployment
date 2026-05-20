@@ -60,7 +60,7 @@ ngrok http 4318
 
 ngrok prints a forwarding URL like:
 
-```
+```text
 Forwarding  https://a1b2c3d4.ngrok-free.app -> http://localhost:4318
 ```
 
@@ -84,6 +84,7 @@ cf push --manifest deployments/cloud-foundry/js/manifest.yaml
 ```
 
 **Limitations:**
+
 - The dev domain URL is **stable** — it is permanently assigned to your account and does not change across tunnel restarts. However, you still need to restart `ngrok http 4318` manually after a laptop sleep or reboot; the CLI apps keep sending to the same URL, which will simply queue or drop until the tunnel is back up.
 - The tunnel goes down automatically when the laptop sleeps, the terminal is closed, or ngrok restarts — unlike Option B, there is no always-on recovery.
 - Free tier rate limit is 4,000 HTTP requests/min across all endpoints, and 20,000 HTTP/S requests per month total — high-volume telemetry can exhaust the monthly quota quickly.
@@ -95,6 +96,7 @@ Deploy the entire LGTM stack as a Docker-based CF app. CF apps can reach it
 24/7 over a stable HTTPS route with no tunnel required.
 
 **Limitations:**
+
 - **No data persistence.** All telemetry (traces, logs, metrics) is stored inside the container's ephemeral filesystem. A CF app restart, redeploy, or crash wipes all collected data — there is no external storage backend.
 - **Disk quota caps retention.** The 4 GB disk quota limits how many Tempo WAL blocks, Loki chunks, and Prometheus TSDB samples can accumulate. Old data is evicted once the disk fills up. Expect roughly 24-48 hours of trace/log retention under normal CLI traffic.
 - **Memory constrained.** The 2 GB memory limit is shared across Grafana, Loki, Tempo, Prometheus, and the OTel Collector. A sudden burst of high-cardinality traces or a Tempo WAL replay can push usage toward the limit; exceeding it causes the whole app to be killed by CF.
@@ -114,7 +116,7 @@ Deploy the entire LGTM stack as a Docker-based CF app. CF apps can reach it
 
 A high-level view of what runs where and how traffic flows between them:
 
-```
+```text
 CLI app (Go/JS)
   └── OTel Collector sidecar
         │
@@ -145,7 +147,7 @@ The entire LGTM stack runs inside a single container and binds its services to
 loopback ports only. A small static Go binary (`cf-proxy`) is the sole process
 that listens on `$PORT` and routes traffic inward.
 
-```
+```text
 ┌─ CF Platform ────────────────────────────────────────────────────────────────┐
 │  Route: crypto-broker-lgtm.<cf_domain>  (port 443, public HTTPS)             │
 │  ↓ TLS termination by CF Gorouter                                            │
@@ -186,7 +188,8 @@ that listens on `$PORT` and routes traffic inward.
 #### Request flows
 
 **Telemetry push** (CLI app → LGTM):
-```
+
+```text
 CF CLI app OTel sidecar
   → POST https://crypto-broker-lgtm.<cf_domain>/v1/traces   (HTTPS, CF Gorouter)
   → cf-proxy ($PORT)          path starts with /v1/
@@ -197,7 +200,8 @@ CF CLI app OTel sidecar
 ```
 
 **Grafana UI** (browser → LGTM):
-```
+
+```text
 Browser
   → GET https://crypto-broker-lgtm.<cf_domain>/   (HTTPS, CF Gorouter)
   → cf-proxy ($PORT)          all other paths
@@ -206,7 +210,7 @@ Browser
 
 #### Container startup sequence
 
-```
+```text
 CF starts container → /cf-entrypoint.sh
   1. cf-proxy starts (background)            — immediately accepts connections on $PORT
   2. Tempo watchdog starts (background)      — waits 120 s, then polls :3200/ready every 30 s
@@ -229,7 +233,7 @@ the CF deployment. The `docker build` command must be run from the parent
 `deployments/` directory so the Dockerfile can also reference the shared
 dashboard JSON from `docker/lgtm/`.
 
-```
+```text
 deployments/
 ├── docker/
 │   └── lgtm/observability/grafana/provisioning/dashboards/
@@ -284,7 +288,7 @@ deployments/
 
 #### How the Dockerfile stitches it together
 
-```
+```text
 Stage 1 — proxy-builder (golang:1.24-alpine)
   COPY proxy/main.go → compile → /cf-proxy  (CGO_ENABLED=0, fully static)
 
@@ -382,7 +386,7 @@ The `grafana/otel-lgtm` image already provisions datasources with those exact
 UIDs at `/otel-lgtm/grafana/conf/provisioning/datasources/`. Grafana detects the
 conflict on startup and exits with:
 
-```
+```text
 Datasource provisioning error: data source not found
 ```
 
@@ -479,7 +483,7 @@ relaunches it if it goes down, without requiring a full CF app restart:
 ## Key Image Facts (`grafana/otel-lgtm:latest`)
 
 | Property | Value |
-|---|---|
+| --- | --- |
 | Base OS | RHEL 9 |
 | Package manager | **None** (no `apt`/`apk`/`yum`) |
 | Startup script | `/otel-lgtm/run-all.sh` — **requires CWD `/otel-lgtm/`** |
@@ -503,6 +507,7 @@ relaunches it if it goes down, without requiring a full CF app restart:
 - Docker Hub account with push access to `<dockerhub-user>/crypto-broker-lgtm`
 - CF CLI logged in to the target BTP subaccount
 - `diego_docker` feature flag enabled in CF:
+
   ```bash
   cf enable-feature-flag diego_docker
   ```

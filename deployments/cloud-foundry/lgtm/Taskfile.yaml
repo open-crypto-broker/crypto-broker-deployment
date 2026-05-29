@@ -1,0 +1,55 @@
+# https://taskfile.dev
+
+version: '3'
+
+# The Dockerfile uses deployments/ as build context so it can reference both:
+#   cloud-foundry/lgtm/  (CF-specific config)
+#   docker/lgtm/         (shared dashboard JSON)
+vars:
+  # TASKFILE_DIR is the directory containing this Taskfile
+  # (deployments/cloud-foundry/lgtm/), so ../../ resolves to deployments/
+  DEPLOY_DIR: '{{.TASKFILE_DIR}}/../..'
+  LGTM_DIR: '{{.TASKFILE_DIR}}'
+
+tasks:
+  lgtm-build:
+    desc: "Build the CF LGTM Docker image. Set DOCKER_IMAGE=<registry/image:tag> (required)."
+    dir: '{{.DEPLOY_DIR}}'
+    requires:
+      vars: [DOCKER_IMAGE]
+    cmds:
+      - docker build --platform linux/amd64 -f cloud-foundry/lgtm/Dockerfile -t {{.DOCKER_IMAGE}} .
+
+  lgtm-push:
+    desc: "Push the CF LGTM Docker image to the registry. Set DOCKER_IMAGE=<registry/image:tag> (required)."
+    requires:
+      vars: [DOCKER_IMAGE]
+    cmds:
+      - docker push {{.DOCKER_IMAGE}}
+
+  lgtm-deploy:
+    desc: "Deploy the LGTM app to CF using vars.yaml. Copy vars.yaml.example → vars.yaml and fill in values first."
+    dir: '{{.LGTM_DIR}}'
+    cmds:
+      - cf push --vars-file vars.yaml
+
+  lgtm-build-push-deploy:
+    desc: "Build, push, and deploy the CF LGTM app in one step. Set DOCKER_IMAGE=<registry/image:tag> (required)."
+    requires:
+      vars: [DOCKER_IMAGE]
+    cmds:
+      - task: lgtm-build
+        vars: {DOCKER_IMAGE: '{{.DOCKER_IMAGE}}'}
+      - task: lgtm-push
+        vars: {DOCKER_IMAGE: '{{.DOCKER_IMAGE}}'}
+      - task: lgtm-deploy
+
+  lgtm-logs:
+    desc: "Tail logs of the CF LGTM app."
+    cmds:
+      - cf logs crypto-broker-lgtm --recent
+
+  lgtm-status:
+    desc: "Show status of the CF LGTM app."
+    cmds:
+      - cf app crypto-broker-lgtm

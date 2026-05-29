@@ -1,0 +1,36 @@
+applications:
+  - name: crypto-broker-lgtm
+    # Custom Docker image built from deployments/cloud-foundry/lgtm/Dockerfile.
+    # It wraps grafana/otel-lgtm with an nginx reverse proxy so CF can route
+    # traffic on the single $PORT to either Grafana (/) or the OTLP ingest (/v1/).
+    docker:
+      image: ((docker_image))
+
+    # All LGTM components run in one container — bump memory/disk if OOMed.
+    memory: 2G
+    disk_quota: 4G
+    instances: 1
+
+    # Use process health check so CF considers the app healthy as soon as the
+    # entrypoint stays running — all LGTM components start sequentially inside
+    # one container and Grafana can take 60-90s before its HTTP endpoint is ready.
+    health-check-type: process
+
+    routes:
+      # Grafana UI  →  https://crypto-broker-lgtm.<cf_domain>/
+      # OTLP HTTP   →  https://crypto-broker-lgtm.<cf_domain>/v1/{traces,metrics,logs}
+      - route: crypto-broker-lgtm.((cf_domain))
+
+    env:
+      # Tell Grafana the public URL so redirects and links work correctly.
+      GF_SERVER_ROOT_URL: https://crypto-broker-lgtm.((cf_domain))
+      # Override the default admin password (set a strong value in vars.yaml).
+      GF_SECURITY_ADMIN_PASSWORD: ((grafana_admin_password))
+      # Set to "warn" to reduce Grafana log noise in CF app logs.
+      GF_LOG_LEVEL: warn
+      # Enable component logs so CF log output shows startup progress.
+      ENABLE_LOGS_GRAFANA: "true"
+      ENABLE_LOGS_LOKI: "true"
+      ENABLE_LOGS_TEMPO: "true"
+      ENABLE_LOGS_PROMETHEUS: "true"
+      ENABLE_LOGS_OTELCOL: "true"

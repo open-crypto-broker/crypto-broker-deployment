@@ -23,14 +23,12 @@ The easiest way is via the **SAP BTP Cockpit**:
 2. Find **SAP Cloud Logging** and click **Create**.
 3. Select the plan (e.g. `standard`) and provide an instance name.
 4. Under **Parameters (JSON)**, paste the configuration and click **Create**:
-
    ```json
    {
      "ingest_otlp": { "enabled": true },
      "retention_period": 7
    }
    ```
-
 5. Once the instance is created, go to the instance → **Bindings** → **Bind Application**, select your app, and confirm.
 
 > `retention_period` is in **days** (range 1–90, default 7).  
@@ -54,13 +52,11 @@ cf env <your-app> | grep -A5 "cloud-logging"
 ```
 
 The binding populates `VCAP_SERVICES` with:
-
 - `credentials.ingest-otlp-endpoint` — gRPC host (no port, no protocol)
 - `credentials.ingest-otlp-cert` — PEM client certificate
 - `credentials.ingest-otlp-key` — PEM private key
 
 The certificate has a finite validity period. Check the expiry:
-
 ```bash
 cf env <your-app> | python3 -c "
 import sys, json
@@ -219,18 +215,36 @@ applications:
     path: my-deployment          # directory containing otelcol, otel-config.yaml,
                                   # extract-cls-creds.py, and your application binary
     env:
+      # These vars are inherited by the main process and all sidecars as a baseline.
+      OTEL_SERVICE_NAME: "my-app"
+      OTEL_LOGS_EXPORTER: "otlpgrpc"
+      OTEL_TRACES_EXPORTER: "otlpgrpc"
+      OTEL_TRACES_SAMPLER: "always_on"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"   # app → local sidecar
       # gRPC format: host:port — no https:// prefix
       OTEL_COLLECTOR_ENDPOINT: "ingest-otlp-sf-<instance-guid>.cls-<region>.cloud.logs.services.sap.hana.ondemand.com:443"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"   # app → local sidecar
+    command: './my-app-binary'
 
     sidecars:
       - name: otel-collector
         process_types: [web]
         memory: 64M
         # Run credential extraction first, then start the collector.
-        # CF sidecar env: blocks are silently ignored — all env vars must be
-        # inlined in the command string.
+        # OTEL_COLLECTOR_ENDPOINT is inherited from the app env block above —
+        # setting it in a sidecar env: block would be silently ignored by CF.
         command: 'python3 extract-cls-creds.py && ./otelcol --config=otel-config.yaml'
+
+      - name: my-server
+        process_types: [web]
+        # CF silently ignores sidecar-level env: blocks — any value that must
+        # differ from the parent app env (e.g. a per-sidecar OTEL_SERVICE_NAME)
+        # must be inlined directly in the command string.
+        command: 'OTEL_SERVICE_NAME=my-server OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 OTEL_METRICS_EXPORTER=otlpgrpc ./my-server-binary'
+
+      - name: my-worker
+        process_types: [web]
+        # Same pattern: per-sidecar overrides inlined in the command.
+        command: 'OTEL_SERVICE_NAME=my-worker OTEL_LOGS_EXPORTER=otlpgrpc OTEL_TRACES_EXPORTER=otlpgrpc OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 ./my-worker-binary'
 ```
 
 ### Option B — vars.yaml (fallback)
@@ -242,19 +256,33 @@ applications:
   - name: my-app
     path: my-deployment
     env:
-      OTEL_COLLECTOR_ENDPOINT: "ingest-otlp-sf-<instance-guid>.cls-<region>.cloud.logs.services.sap.hana.ondemand.com:443"
+      OTEL_SERVICE_NAME: "my-app"
+      OTEL_LOGS_EXPORTER: "otlpgrpc"
+      OTEL_TRACES_EXPORTER: "otlpgrpc"
+      OTEL_TRACES_SAMPLER: "always_on"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
+      OTEL_COLLECTOR_ENDPOINT: "ingest-otlp-sf-<instance-guid>.cls-<region>.cloud.logs.services.sap.hana.ondemand.com:443"
+      # Credentials injected at deploy time via --vars-file vars.yaml
       CLS_OTLP_CERT: "((CLS_OTLP_CERT))"
       CLS_OTLP_KEY:  "((CLS_OTLP_KEY))"
+    command: './my-app-binary'
 
     sidecars:
       - name: otel-collector
         process_types: [web]
         memory: 64M
+        # CLS_OTLP_CERT and CLS_OTLP_KEY are inherited from the app env block.
+        # CF silently ignores any sidecar-level env: block, so they cannot be
+        # set there — they must come from the parent env or be inlined here.
         command: >
           printf '%s' "$CLS_OTLP_CERT" > /tmp/cls-otlp.crt &&
           printf '%s' "$CLS_OTLP_KEY"  > /tmp/cls-otlp.key &&
           ./otelcol --config=otel-config.yaml
+
+      - name: my-server
+        process_types: [web]
+        # Per-sidecar overrides must be inlined — sidecar env: blocks are ignored.
+        command: 'OTEL_SERVICE_NAME=my-server OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 OTEL_METRICS_EXPORTER=otlpgrpc ./my-server-binary'
 ```
 
 Deploy with:
@@ -311,7 +339,7 @@ The `extract-cls-creds.py` script always reads from `VCAP_SERVICES` at startup, 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
-| --- | --- | --- |
+|---|---|---|
 | `IndentationError: unexpected indent` in sidecar logs | Inline Python in sidecar `command` — CF wraps it in `bash -c '...'` causing quote conflicts | Use a `.py` script file instead of inline `python3 -c "..."` |
 | OTel collector starts but no data arrives | `env:` block on sidecar ignored by CF | Inline `OTEL_COLLECTOR_ENDPOINT` in the sidecar `command`, or set it on the parent app env |
 | `HTTP Status Code 404` export error | Using `otlphttp` exporter against a gRPC-only endpoint | Switch to `otlp_grpc` exporter and remove `https://` from endpoint |

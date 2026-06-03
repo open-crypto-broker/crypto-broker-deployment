@@ -23,12 +23,14 @@ The easiest way is via the **SAP BTP Cockpit**:
 2. Find **SAP Cloud Logging** and click **Create**.
 3. Select the plan (e.g. `standard`) and provide an instance name.
 4. Under **Parameters (JSON)**, paste the configuration and click **Create**:
+
    ```json
    {
      "ingest_otlp": { "enabled": true },
      "retention_period": 7
    }
    ```
+
 5. Once the instance is created, go to the instance → **Bindings** → **Bind Application**, select your app, and confirm.
 
 > `retention_period` is in **days** (range 1–90, default 7).  
@@ -52,11 +54,13 @@ cf env <your-app> | grep -A5 "cloud-logging"
 ```
 
 The binding populates `VCAP_SERVICES` with:
+
 - `credentials.ingest-otlp-endpoint` — gRPC host (no port, no protocol)
 - `credentials.ingest-otlp-cert` — PEM client certificate
 - `credentials.ingest-otlp-key` — PEM private key
 
 The certificate has a finite validity period. Check the expiry:
+
 ```bash
 cf env <your-app> | python3 -c "
 import sys, json
@@ -339,7 +343,7 @@ The `extract-cls-creds.py` script always reads from `VCAP_SERVICES` at startup, 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
-|---|---|---|
+| --- | --- | --- |
 | `IndentationError: unexpected indent` in sidecar logs | Inline Python in sidecar `command` — CF wraps it in `bash -c '...'` causing quote conflicts | Use a `.py` script file instead of inline `python3 -c "..."` |
 | OTel collector starts but no data arrives | `env:` block on sidecar ignored by CF | Inline `OTEL_COLLECTOR_ENDPOINT` in the sidecar `command`, or set it on the parent app env |
 | `HTTP Status Code 404` export error | Using `otlphttp` exporter against a gRPC-only endpoint | Switch to `otlp_grpc` exporter and remove `https://` from endpoint |

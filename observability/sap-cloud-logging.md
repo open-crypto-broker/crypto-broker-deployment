@@ -22,7 +22,7 @@ The easiest way is via the **SAP BTP Cockpit**:
 1. Navigate to your Cloud Foundry space → **Services** → **Service Marketplace**.
 2. Find **SAP Cloud Logging** and click **Create**.
 3. Select the plan (e.g. `standard`) and provide an instance name.
-4. Under **Parameters (JSON)**, paste the configuration and click **Create**:
+4. In the next step **Parameters (JSON)**, change the configuration for the `ingest_otlp` setting as follows and click **Create**:
 
    ```json
    {

@@ -175,6 +175,9 @@
   API:
     HashData:
       HashAlg: sha-256
+    EncryptData:
+      EncryptAlg: aes-gcm
+      KeySize: 128
     SignCertificate:
       SignAlg: rsa
       HashAlg: sha-256
@@ -210,6 +213,9 @@
   API:
     HashData:
       HashAlg: sha-384
+    EncryptData:
+      EncryptAlg: aes-gcm
+      KeySize: 192
     SignCertificate:
       SignAlg: ecdsa
       HashAlg: sha-384
@@ -245,6 +251,9 @@
   API:
     HashData:
       HashAlg: sha-512
+    EncryptData:
+      EncryptAlg: aes-gcm
+      KeySize: 256
     SignCertificate:
       SignAlg: ecdsa
       HashAlg: sha-512

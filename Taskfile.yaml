@@ -13,7 +13,7 @@ vars:
         cmd: "./crypto-broker-cli-js/bin/js-client-cli"
         env: ".env.cli-js"
 
-  COMMANDS: ["health", "hash", "sign"]
+  COMMANDS: ["health", "hash", "sign", "encrypt"]
   # Here are the Known-Answer-Tests for the following text (without quotes): "Welcome CryptoBroker"
   KAT:
     map: {
@@ -30,6 +30,19 @@ vars:
       KAT_SHA3_512:
         14894112f30f982c01e1de386ee9ca60bff70469d9fd249a5f9fbfc66a29c37c76b3fb15c294a6b6d3a1609fa59ca14194e2bc9da16610fa7f1a10dad38d628e,
       }
+  # Plaintext used for the AES-GCM encrypt/decrypt Known-Answer-Tests (without quotes): "Welcome CryptoBroker"
+  ENC_PLAINTEXT: "Welcome CryptoBroker"
+  # AES-GCM KAT fixtures: maps each encryption profile to its fixture file in the
+  # testing folder. Each fixture holds the hex-encoded KEY, NONCE, AAD and the
+  # expected CIPHERTEXT and TAG for the plaintext above (caller-managed rawKey flow).
+  ENC_KAT:
+    map:
+      FIPS-140-3-128bit:
+        fixture: testing/encryption/aes-128-gcm.env
+      FIPS-140-3-192bit:
+        fixture: testing/encryption/aes-192-gcm.env
+      FIPS-140-3-256bit:
+        fixture: testing/encryption/aes-256-gcm.env
   # Profiles, CSRs, and Issuer certificates for the SignCertificate tests in the Crypto Broker server
   PROFILES: [
     "Default",
@@ -243,7 +256,7 @@ tasks:
     requires:
       vars:
         - name: CMD
-          enum: ["health", "benchmark", "hash", "sign"]
+          enum: ["health", "benchmark", "hash", "sign", "encrypt"]
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       OS: '{{.OS}}'
@@ -448,6 +461,80 @@ tasks:
           else
             echo "[✅] Hash value matches expected KAT"
           fi
+
+  # AES-GCM encrypt/decrypt tests from the clients
+  test-encrypt:
+    desc: "Iterate AES-GCM encrypt/decrypt round-trip tests over all clients"
+    internal: true
+    vars:
+      CLIENTS:
+        ref: .CLIENTS
+    cmds:
+      - for: { var: CLIENTS }
+        task: test-encrypt-KATs
+        vars:
+          CLIENT_PATH: '{{.ITEM.cmd}}'
+          CLIENT_ENV: '{{.ITEM.env}}'
+
+  test-encrypt-KATs:
+    desc: "Iterate over all AES-GCM KATs: encrypt (assert ciphertext/tag) then decrypt (assert round-trip)"
+    internal: true
+    silent: true
+    vars:
+      ENC_KAT:
+        ref: .ENC_KAT
+    cmds:
+      - for: { var: ENC_KAT }
+        cmd:
+          |
+          set -e
+          echo "[INFO] Test AES-GCM with profile {{.KEY}}"
+
+          set -a
+          source {{.CLIENT_ENV}}
+          source {{.ITEM.fixture}}
+          set +a
+
+          # Preserve the expected known-answer values before invoking the client
+          EXPECTED_CIPHERTEXT="$CIPHERTEXT"
+          EXPECTED_TAG="$TAG"
+
+          # --- Encrypt: assert ciphertext and tag match the known-answer test ---
+          ENC_RESPONSE=$({{.CLIENT_PATH}} encrypt \
+            --profile={{.KEY}} \
+            --keySource=raw \
+            --key="$KEY" \
+            --nonce="$NONCE" \
+            --aad="$AAD" \
+            "{{.ENC_PLAINTEXT}}")
+          ACTUAL_CIPHERTEXT=$(echo "$ENC_RESPONSE" | {{.GREP_CMD}} -oP '"ciphertext":\s?"\K[^"]+')
+          ACTUAL_TAG=$(echo "$ENC_RESPONSE" | {{.GREP_CMD}} -oP '"tag":\s?"\K[^"]+')
+
+          if [[ "$ACTUAL_CIPHERTEXT" != "$EXPECTED_CIPHERTEXT" ]]; then
+            echo "[❌] Ciphertext does not match expected KAT!"
+            exit 1
+          fi
+          if [[ "$ACTUAL_TAG" != "$EXPECTED_TAG" ]]; then
+            echo "[❌] Authentication tag does not match expected KAT!"
+            exit 1
+          fi
+          echo "[✅] Ciphertext and tag match expected KAT"
+
+          # --- Decrypt: assert the plaintext round-trips ---
+          DEC_RESPONSE=$({{.CLIENT_PATH}} decrypt \
+            --profile={{.KEY}} \
+            --keySource=raw \
+            --key="$KEY" \
+            --nonce="$NONCE" \
+            --aad="$AAD" \
+            --tag="$EXPECTED_TAG" \
+            "$EXPECTED_CIPHERTEXT")
+          ACTUAL_PLAINTEXT=$(echo "$DEC_RESPONSE" | {{.GREP_CMD}} -oP '"plaintext":\s?"\K[^"]+')
+          if [[ "$ACTUAL_PLAINTEXT" != "{{.ENC_PLAINTEXT}}" ]]; then
+            echo "[❌] Decrypted plaintext does not match original!"
+            exit 1
+          fi
+          echo "[✅] Decrypted plaintext matches original"
 
   # Sign certificate tests from the clients
   test-sign:

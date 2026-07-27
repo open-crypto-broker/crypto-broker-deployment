@@ -13,7 +13,7 @@ vars:
         cmd: "./crypto-broker-cli-js/bin/js-client-cli"
         env: ".env.cli-js"
 
-  COMMANDS: ["health", "hash", "sign", "encrypt"]
+  COMMANDS: ["health", "hash-data", "sign-certificate", "encrypt"]
   # Here are the Known-Answer-Tests for the following text (without quotes): "Welcome CryptoBroker"
   KAT:
     map: {
@@ -256,7 +256,7 @@ tasks:
     requires:
       vars:
         - name: CMD
-          enum: ["health", "benchmark", "hash", "sign", "encrypt"]
+          enum: ["health", "benchmark", "hash-data", "sign-certificate", "encrypt"]
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       OS: '{{.OS}}'
@@ -423,7 +423,7 @@ tasks:
           fi
 
   # Hashing tests from the clients
-  test-hash:
+  test-hash-data:
     desc: "Iterate hashing tests over all clients"
     internal: true
     vars:
@@ -431,13 +431,13 @@ tasks:
         ref: .CLIENTS
     cmds:
       - for: { var: CLIENTS }
-        task: test-hashing-KATs
+        task: test-hash-data-KATs
         vars:
           CLIENT_PATH: '{{.ITEM.cmd}}'
           CLIENT_ENV: '{{.ITEM.env}}'
 
-  test-hashing-KATs:
-    desc: "Iterate over all hashing KATs"
+  test-hash-data-KATs:
+    desc: "Iterate over all hash-data KATs"
     internal: true
     silent: true
     vars:
@@ -454,7 +454,7 @@ tasks:
           source {{.CLIENT_ENV}}
           set +a
 
-          HASH_RESPONSE=$({{.CLIENT_PATH}} hash --profile={{.KEY}} "Welcome CryptoBroker" | {{.GREP_CMD}} -oP '"hashValue":\s?"\K[^"]+')
+          HASH_RESPONSE=$({{.CLIENT_PATH}} hash-data --profile={{.KEY}} "Welcome CryptoBroker" | {{.GREP_CMD}} -oP '"[hH]ashValueHex":\s?"\K[^"]+')
           if [[ $HASH_RESPONSE != {{.ITEM}} ]] then
             echo "[❌] Hash values do not match!"
             exit 1
@@ -537,7 +537,7 @@ tasks:
           echo "[✅] Decrypted plaintext matches original"
 
   # Sign certificate tests from the clients
-  test-sign:
+  test-sign-certificate:
     desc: "Iterate signing tests over all clients"
     internal: true
     silent: true
@@ -708,7 +708,7 @@ tasks:
           echo -e "Profile: {{.PROFILE}}\nCSR: {{.ITEM}}\nIssuer: {{.ISSUER}}"
           {{end}}
           RESPONSE=$({{.CLIENT_PATH}} \
-            sign \
+            sign-certificate \
             --profile={{.PROFILE}} \
             --csr=$TEST_CSR_DIR/{{.ITEM}}.csr \
             --caCert=$TEST_CA_DIR/cert-{{.ISSUER}}.pem \
@@ -721,7 +721,7 @@ tasks:
             {{else}}
             echo -e "❌ Command failed\n"
             {{end}}
-          elif echo "$RESPONSE" | {{.GREP_CMD}} -E 'signedCertificate'; then
+          elif echo "$RESPONSE" | {{.GREP_CMD}} -E 'BEGIN CERTIFICATE'; then
             {{if eq .CREATE_COMP_MATRIX "true"}}
             printf " ✅ |" >> {{.COMP_MATRIX}}
             {{else}}
@@ -749,7 +749,8 @@ tasks:
       - for: { var: CLIENTS }
         task: test-sign-certificate-custom-subject
         vars:
-          CLIENT_PATH: '{{.ITEM}}'
+          CLIENT_PATH: '{{.ITEM.cmd}}'
+          CLIENT_ENV: '{{.ITEM.env}}'
 
   test-sign-certificate-custom-subject:
     desc: "Test custom subject with CLI API"
@@ -762,8 +763,13 @@ tasks:
         TEST_CSR_DIR=testing/certificates/test-csr
         rm -rf $TMP_DIR
         mkdir -p $TMP_DIR
-        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} sign --profile=Default --csr=$TEST_CSR_DIR/csr-nist-secp384r1.csr --caCert=$TEST_CA_DIR/cert-test-CA-nist-secp521r1.pem --caKey=$TEST_CA_DIR/test-CA-nist-secp521r1.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | {{.GREP_CMD}} -oP '\"signedCertificate\":\s?"\K[^"]+')
-        printf "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-custom-subject.pem
+
+        set -a
+        source {{.CLIENT_ENV}}
+        set +a
+
+        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} sign-certificate --profile=Default --csr=$TEST_CSR_DIR/csr-nist-secp384r1.csr --caCert=$TEST_CA_DIR/cert-test-CA-nist-secp521r1.pem --caKey=$TEST_CA_DIR/test-CA-nist-secp521r1.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | {{.GREP_CMD}} 'BEGIN CERTIFICATE' | jq -r '.pem // .response.SignedCertificate.Pem // empty')
+        echo "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-custom-subject.pem
         openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-custom-subject.pem -text
 
   ################# Cloud Foundry Deployment ####################

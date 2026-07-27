@@ -35,7 +35,7 @@ task run
 And from CLI invoke any command
 
 ```shell
-task test-sign
+task test CMD=sign-certificate
 ```
 
 #### Dynatrace collector

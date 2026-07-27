@@ -21,7 +21,7 @@ services:
     container_name: test_app_js-hash
     command:
       - --loop=1000
-      - hash
+      - hash-data
       - --profile=Default
       - Hello Cryptobroker!
     networks:
@@ -34,7 +34,7 @@ services:
       - shared_data:/tmp
     command:
       - --loop=1000
-      - sign
+      - sign-certificate
       - --profile=Default
       - --csr=/certificates/test-csr/csr-nist-secp256r1.csr
       - --caCert=/certificates/test-ca/cert-test-CA-nist-secp384r1.pem

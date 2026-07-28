@@ -177,6 +177,7 @@ tasks:
     dir: crypto-broker-cli-go
     cmds:
       - GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ./bin/go-client-cli main.go
+      - CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go test -c -o ./bin/stress-test ./internal/command
 
   build-cli-js:
     internal: true
@@ -786,6 +787,8 @@ tasks:
     desc: "Deploy to Cloud Foundry the Crypto Broker server and client specified with CLIENT='', values are 'go', 'js'. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
+      OS: '{{.OS | default "linux"}}'
+      ARCH: '{{.ARCH | default "amd64"}}'
     requires:
       vars:
         - name: CLIENT
@@ -797,10 +800,14 @@ tasks:
       - task: build-crypto-broker-server
         vars:
           BRANCH: '{{.BRANCH}}'
+          OS: '{{.OS}}'
+          ARCH: '{{.ARCH}}'
       - task: build-cli
         vars:
           CLIENT: '{{.CLIENT}}'
           BRANCH: '{{.BRANCH}}'
+          OS: '{{.OS}}'
+          ARCH: '{{.ARCH}}'
       - task: create-deployment-folder
         vars:
           CLIENT: '{{.CLIENT}}'
@@ -877,6 +884,25 @@ tasks:
     internal: true
     cmds:
       - cp crypto-broker-cli-go/bin/go-client-cli deployments/cloud-foundry/go/go-deployment
+      - cp crypto-broker-cli-go/bin/stress-test deployments/cloud-foundry/go/go-deployment
+
+  cf-stress-test:
+    desc: "Run the CLI-Go stress test in the deployed Cloud Foundry app"
+    vars:
+      CONCURRENT: '{{.CONCURRENT | default "100"}}'
+      NUM: '{{.NUM | default "100"}}'
+      COUNT: '{{.COUNT | default "1"}}'
+    cmds:
+      - cf ssh crypto-broker-go-cli -c
+          "STRESS_BENCHMARK_ENABLED=true
+          STRESS_CONCURRENT={{.CONCURRENT}}
+          STRESS_COUNT={{.NUM}}
+          ./stress-test
+          -test.run=^$
+          -test.bench=^BenchmarkStressHashConcurrentConnections$
+          -test.benchmem
+          -test.benchtime=1x
+          -test.count={{.COUNT}}"
 
   # Node.js specific tasks
   copy-js-cli:
@@ -891,18 +917,59 @@ tasks:
     cmds:
       - minikube image load ghcr.io/open-crypto-broker/test_app_js ghcr.io/open-crypto-broker/test_app_go ghcr.io/open-crypto-broker/server
 
+  kube-prepare-stress-client:
+    desc: "Build the Kubernetes stress-test image and load it into minikube"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+      ARCH: '{{.ARCH | default "amd64"}}'
+    cmds:
+      - task: build-cli
+        vars:
+          CLIENT: go
+          BRANCH: '{{.BRANCH}}'
+          OS: linux
+          ARCH: '{{.ARCH}}'
+      - docker build
+          -f deployments/k8s/stress-client.Dockerfile
+          -t ghcr.io/open-crypto-broker/stress_test:dev .
+      - minikube image load ghcr.io/open-crypto-broker/stress_test:dev
+
   kube-deploy:
     desc: "Deploys the Kubernetes Crypto Broker"
     dir: deployments/k8s/kube-broker/
     vars:
       TAG: '{{.TAG | default "dev"}}'
+      STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
+      STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
+      STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
     cmds:
-      - helm upgrade --install -f Chart.yaml -f values.yaml --set appVersion="{{.TAG}}" crypto-broker --namespace crypto-broker --create-namespace .
+      - helm upgrade --install -f Chart.yaml -f values.yaml
+          --set appVersion="{{.TAG}}"
+          --set stress.enabled="{{.STRESS_ENABLED}}"
+          --set stress.concurrent="{{.STRESS_CONCURRENT}}"
+          --set stress.num="{{.STRESS_NUM}}"
+          crypto-broker --namespace crypto-broker --create-namespace .
 
   kube-destroy:
     desc: "Destroys the Kubernetes Crypto Broker deployment"
     cmds:
       - helm uninstall crypto-broker -n crypto-broker
+
+  kube-stress-test:
+    desc: "Run the CLI-Go stress test in the deployed Kubernetes pod"
+    vars:
+      COUNT: '{{.COUNT | default "1"}}'
+    cmds:
+      - kubectl exec deployment/crypto-broker-kube-broker
+          -n crypto-broker
+          -c stress-test
+          --
+          /app/stress-test
+          -test.run=^$
+          -test.bench=^BenchmarkStressHashConcurrentConnections$
+          -test.benchmem
+          -test.benchtime=1x
+          -test.count={{.COUNT}}
 
   ################# Docker-Compose Deployment ####################
   docker-jaeger-build:
@@ -966,4 +1033,3 @@ tasks:
           -f server.yml
           -f test_app_js.yml
           -f test_app_go.yml {{.CMD}}
-

@@ -50,6 +50,14 @@ cliAppGo:
     - --caCert=/certificates/ca_cert.pem
     - --caKey=/certificates/private_key.pem
 
+stress:
+  enabled: false
+  image:
+    name: ghcr.io/open-crypto-broker/stress_test
+    pullPolicy: IfNotPresent
+  concurrent: 100
+  num: 100
+
 serverApp:
   name: server-app
   image:

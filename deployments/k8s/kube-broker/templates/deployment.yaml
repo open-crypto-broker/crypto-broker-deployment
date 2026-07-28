@@ -105,6 +105,31 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 
+        {{- if .Values.stress.enabled }}
+        # CLI-Go stress-test runner
+        - name: stress-test
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.stress.image.name }}:{{ .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.stress.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "kube-broker.fullname" . }}-clientconfig
+          env:
+            - name: STRESS_BENCHMARK_ENABLED
+              value: "true"
+            - name: STRESS_CONCURRENT
+              value: {{ .Values.stress.concurrent | quote }}
+            - name: STRESS_COUNT
+              value: {{ .Values.stress.num | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+
         # Server App, the Broker
         - name: {{ .Values.serverApp.name }}
           securityContext:

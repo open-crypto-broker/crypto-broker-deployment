@@ -574,7 +574,7 @@
                   "scope": "span",
                   "tag": "name",
                   "value": [
-                    "CLI.Hash"
+                    "CLI.HashData"
                   ],
                   "valueType": "string"
                 }
@@ -582,11 +582,11 @@
               "limit": 250,
               "metricsQueryType": "range",
               "queryType": "traceqlSearch",
-              "refId": "Go-CLI Hash",
+              "refId": "Go-CLI HashData",
               "tableType": "traces"
             }
           ],
-          "title": "JS CLI Hash",
+          "title": "JS CLI HashData",
           "type": "timeseries"
         },
         {
@@ -722,7 +722,7 @@
                   "scope": "span",
                   "tag": "name",
                   "value": [
-                    "CLI.Sign"
+                    "CLI.SignCertificate"
                   ],
                   "valueType": "string"
                 }
@@ -730,11 +730,11 @@
               "limit": 250,
               "metricsQueryType": "range",
               "queryType": "traceqlSearch",
-              "refId": "Go-CLI Sign",
+              "refId": "Go-CLI SignCertificate",
               "tableType": "traces"
             }
           ],
-          "title": "JS CLI Sign",
+          "title": "JS CLI SignCertificate",
           "type": "timeseries"
         },
         {
@@ -845,7 +845,7 @@
                   "scope": "span",
                   "tag": "name",
                   "value": [
-                    "CLI.Hash"
+                    "CLI.HashData"
                   ],
                   "valueType": "string"
                 }
@@ -853,11 +853,11 @@
               "limit": 250,
               "metricsQueryType": "range",
               "queryType": "traceqlSearch",
-              "refId": "Go-CLI Hash",
+              "refId": "Go-CLI HashData",
               "tableType": "traces"
             }
           ],
-          "title": "Go CLI Hash",
+          "title": "Go CLI HashData",
           "type": "timeseries"
         },
         {
@@ -993,7 +993,7 @@
                   "scope": "span",
                   "tag": "name",
                   "value": [
-                    "CLI.Sign"
+                    "CLI.SignCertificate"
                   ],
                   "valueType": "string"
                 }
@@ -1001,11 +1001,11 @@
               "limit": 250,
               "metricsQueryType": "range",
               "queryType": "traceqlSearch",
-              "refId": "Go-CLI Sign",
+              "refId": "Go-CLI SignCertificate",
               "tableType": "traces"
             }
           ],
-          "title": "Go CLI Sign",
+          "title": "Go CLI SignCertificate",
           "type": "timeseries"
         },
         {
@@ -1089,20 +1089,20 @@
                   "scope": "span",
                   "tag": "name",
                   "value": [
-                    "CLI.Hash"
+                    "CLI.HashData"
                   ],
                   "valueType": "string"
                 }
               ],
               "limit": 100,
               "metricsQueryType": "range",
-              "query": "{resource.service.name=\"crypto-broker-cli-go\" && name=\"CLI.Hash\"}",
+              "query": "{resource.service.name=\"crypto-broker-cli-go\" && name=\"CLI.HashData\"}",
               "queryType": "traceqlSearch",
-              "refId": "Traces: Go CLI Hash",
+              "refId": "Traces: Go CLI HashData",
               "tableType": "traces"
             }
           ],
-          "title": "JS CLI Hash Traces",
+          "title": "JS CLI HashData Traces",
           "type": "table"
         },
         {
@@ -1186,20 +1186,20 @@
                   "scope": "span",
                   "tag": "name",
                   "value": [
-                    "CLI.Hash"
+                    "CLI.HashData"
                   ],
                   "valueType": "string"
                 }
               ],
               "limit": 100,
               "metricsQueryType": "range",
-              "query": "{resource.service.name=\"crypto-broker-cli-go\" && name=\"CLI.Hash\"}",
+              "query": "{resource.service.name=\"crypto-broker-cli-go\" && name=\"CLI.HashData\"}",
               "queryType": "traceqlSearch",
-              "refId": "Traces: Go CLI Hash",
+              "refId": "Traces: Go CLI HashData",
               "tableType": "traces"
             }
           ],
-          "title": "Go CLI Hash Traces",
+          "title": "Go CLI HashData Traces",
           "type": "table"
         },
         {
@@ -1283,7 +1283,7 @@
                   "scope": "span",
                   "tag": "name",
                   "value": [
-                    "CLI.Sign"
+                    "CLI.SignCertificate"
                   ],
                   "valueType": "string"
                 }
@@ -1292,11 +1292,11 @@
               "metricsQueryType": "range",
               "query": "{}",
               "queryType": "traceqlSearch",
-              "refId": "Traces: Go CLI Sign",
+              "refId": "Traces: Go CLI SignCertificate",
               "tableType": "traces"
             }
           ],
-          "title": "JS CLI Sign Traces",
+          "title": "JS CLI SignCertificate Traces",
           "type": "table"
         },
         {
@@ -1380,7 +1380,7 @@
                   "scope": "span",
                   "tag": "name",
                   "value": [
-                    "CLI.Sign"
+                    "CLI.SignCertificate"
                   ],
                   "valueType": "string"
                 }
@@ -1389,11 +1389,11 @@
               "metricsQueryType": "range",
               "query": "{}",
               "queryType": "traceqlSearch",
-              "refId": "Traces: Go CLI Sign",
+              "refId": "Traces: Go CLI SignCertificate",
               "tableType": "traces"
             }
           ],
-          "title": "Go CLI Sign Traces",
+          "title": "Go CLI SignCertificate Traces",
           "type": "table"
         },
         {
@@ -1477,7 +1477,7 @@
                   "scope": "span",
                   "tag": "name",
                   "value": [
-                    "CryptoBrokerServer.Hash"
+                    "CryptoBrokerServer.HashDataProcedure"
                   ],
                   "valueType": "string"
                 }
@@ -1489,7 +1489,7 @@
               "tableType": "traces"
             }
           ],
-          "title": "Crypto Broker Server - Hash",
+          "title": "Crypto Broker Server - HashData",
           "type": "table"
         },
         {
@@ -1573,7 +1573,7 @@
                   "scope": "span",
                   "tag": "name",
                   "value": [
-                    "CryptoBrokerServer.Sign"
+                    "CryptoBrokerServer.SignCertificateProcedure"
                   ],
                   "valueType": "string"
                 },
@@ -1587,13 +1587,13 @@
               ],
               "limit": 100,
               "metricsQueryType": "range",
-              "query": "{resource.service.name=\"crypto-broker-server\" && name=\"CryptoBrokerServer.Sign\" && resource.service.name!=\"crypto-broker-cli-go\"}",
+              "query": "{resource.service.name=\"crypto-broker-server\" && name=\"CryptoBrokerServer.SignCertificateProcedure\" && resource.service.name!=\"crypto-broker-cli-go\"}",
               "queryType": "traceqlSearch",
               "refId": "A",
               "tableType": "traces"
             }
           ],
-          "title": "Crypto Broker Server - Sign",
+          "title": "Crypto Broker Server - SignCertificate",
           "type": "table"
         }
       ],

@@ -13,7 +13,7 @@ vars:
         cmd: "./crypto-broker-cli-js/bin/js-client-cli"
         env: ".env.cli-js"
 
-  COMMANDS: ["health", "hash-data", "sign-certificate", "encrypt"]
+  COMMANDS: ["health", "hash-data", "sign-certificate"]
   # Here are the Known-Answer-Tests for the following text (without quotes): "Welcome CryptoBroker"
   KAT:
     map: {
@@ -256,7 +256,7 @@ tasks:
     requires:
       vars:
         - name: CMD
-          enum: ["health", "benchmark", "hash-data", "sign-certificate", "encrypt"]
+          enum: ["health", "benchmark", "hash-data", "sign-certificate"]
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       OS: '{{.OS}}'

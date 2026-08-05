@@ -101,9 +101,9 @@ task cf-stress-test CONCURRENT=100 NUM=100
 For Kubernetes:
 
 ```shell
-task minikube-images
-task kube-prepare-stress-client
-task kube-deploy STRESS_ENABLED=true STRESS_CONCURRENT=100 STRESS_NUM=100
+task minikube-images TAG=v0.4.1
+task kube-prepare-stress-client BRANCH=v0.4.1 TAG=v0.4.1
+task kube-deploy TAG=v0.4.1 STRESS_ENABLED=true STRESS_CONCURRENT=100 STRESS_NUM=100
 task kube-stress-test
 ```
 

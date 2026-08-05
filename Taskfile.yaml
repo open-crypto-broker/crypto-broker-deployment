@@ -914,14 +914,20 @@ tasks:
   ################# Kubernetes Deployment ####################
   minikube-images:
     desc: "Load the docker images into minikube (Note: this might take a while)"
+    vars:
+      TAG: '{{.TAG | default "latest"}}'
     cmds:
-      - minikube image load ghcr.io/open-crypto-broker/test_app_js ghcr.io/open-crypto-broker/test_app_go ghcr.io/open-crypto-broker/server
+      - minikube image load
+          ghcr.io/open-crypto-broker/test_app_js:{{.TAG}}
+          ghcr.io/open-crypto-broker/test_app_go:{{.TAG}}
+          ghcr.io/open-crypto-broker/server:{{.TAG}}
 
   kube-prepare-stress-client:
     desc: "Build the Kubernetes stress-test image and load it into minikube"
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       ARCH: '{{.ARCH | default "amd64"}}'
+      TAG: '{{.TAG | default "dev"}}'
     cmds:
       - task: build-cli
         vars:
@@ -931,8 +937,8 @@ tasks:
           ARCH: '{{.ARCH}}'
       - docker build
           -f deployments/k8s/stress-client.Dockerfile
-          -t ghcr.io/open-crypto-broker/stress_test:dev .
-      - minikube image load ghcr.io/open-crypto-broker/stress_test:dev
+          -t ghcr.io/open-crypto-broker/stress_test:{{.TAG}} .
+      - minikube image load ghcr.io/open-crypto-broker/stress_test:{{.TAG}}
 
   kube-deploy:
     desc: "Deploys the Kubernetes Crypto Broker"
@@ -944,7 +950,7 @@ tasks:
       STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
     cmds:
       - helm upgrade --install -f Chart.yaml -f values.yaml
-          --set appVersion="{{.TAG}}"
+          --set imageTag="{{.TAG}}"
           --set stress.enabled="{{.STRESS_ENABLED}}"
           --set stress.concurrent="{{.STRESS_CONCURRENT}}"
           --set stress.num="{{.STRESS_NUM}}"

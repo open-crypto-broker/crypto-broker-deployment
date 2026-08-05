@@ -5,6 +5,9 @@
 # set the namespace for all variables
 namespace: crypto-broker
 
+# Tag shared by the server and client images in this deployment.
+imageTag: dev
+
 # sets the number of replicas, originally set to 1
 replicaCount: 1
 

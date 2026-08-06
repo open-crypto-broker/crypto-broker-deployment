@@ -1,0 +1,74 @@
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9096
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "127.0.0.1:4417"
+        http:
+          endpoint: "127.0.0.1:4418"
+
+ingester:
+  # Relaxed from 1s/1s/1s defaults to reduce WAL churn and memory pressure.
+  # With 1s blocks Tempo creates ~1 block/second; at high trace throughput this
+  # overwhelms the flush queue and causes large WAL replays on restart.
+  trace_idle_period: 30s
+  max_block_duration: 2m
+  flush_check_period: 30s
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    min_ready_duration: 1s
+
+memberlist:
+  bind_addr: [127.0.0.1]
+  bind_port: 7947
+
+querier:
+  frontend_worker:
+    frontend_address: 127.0.0.1:9096
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /data/tempo/wal
+    local:
+      path: /data/tempo/blocks
+
+metrics_generator:
+  processor:
+    local_blocks:
+      filter_server_spans: false
+    span_metrics:
+      dimensions:
+        - service_name
+        - operation
+        - status_code
+  traces_storage:
+    path: /data/tempo/generator/traces
+  storage:
+    path: /data/tempo/generator/wal
+    remote_write:
+      - url: http://127.0.0.1:9090/api/v1/write
+        send_exemplars: true
+
+compactor:
+  compaction:
+    # Delete blocks older than 24 h. Without this, blocks accumulate forever.
+    # After 7+ days at 2-min block duration, ~5000 blocks exist; Tempo's
+    # compaction pipeline loads several at once and causes OOM kills.
+    block_retention: 24h
+    # Remove compacted (merged) source blocks quickly.
+    compacted_block_retention: 1h
+
+overrides:
+  # Prevent a single runaway trace from spiking memory.
+  max_bytes_per_trace: 5000000   # 5 MB
+  metrics_generator_processors: [service-graphs, local-blocks, span-metrics]

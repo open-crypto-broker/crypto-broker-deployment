@@ -25,6 +25,7 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
+        {{- if not .Values.stress.enabled }}
         # JS CLI App with hashing request
         - name: "{{ .Values.cliAppJs.name }}-hashing"
           securityContext:
@@ -104,6 +105,7 @@ spec:
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+        {{- end }}
 
         {{- if .Values.stress.enabled }}
         # CLI-Go stress-test runner

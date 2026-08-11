@@ -897,7 +897,7 @@ tasks:
           "STRESS_BENCHMARK_ENABLED=true
           STRESS_CONCURRENT={{.CONCURRENT}}
           STRESS_COUNT={{.NUM}}
-          ./stress-test
+          ./app/stress-test
           -test.run=^$
           -test.bench=^BenchmarkStressHashConcurrentConnections$
           -test.benchmem

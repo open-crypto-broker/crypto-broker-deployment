@@ -132,7 +132,7 @@ applications:
       OTEL_METRICS_INTERVAL: "10s"
     command: 'OTEL_SERVICE_NAME=test-app-js-hash OTEL_LOGS_EXPORTER="otlpproto"
       OTEL_TRACES_EXPORTER="otlpproto" OTEL_METRICS_EXPORTER="otlpproto"
-      node dist/cli.js --loop 1000 hash --profile=KAT_SHA3_512
+      node dist/cli.js --loop 1000 hash-data --profile=KAT_SHA3_512
       "Welcome CryptoBroker"'
 
     sidecars:
@@ -153,7 +153,7 @@ applications:
         # be set inline
         command: 'OTEL_SERVICE_NAME=test-app-js-default-profile
           OTEL_LOGS_EXPORTER="otlpproto" OTEL_TRACES_EXPORTER="otlpproto"
-          OTEL_METRICS_EXPORTER="otlpproto" node dist/cli.js --loop 1000 hash
+          OTEL_METRICS_EXPORTER="otlpproto" node dist/cli.js --loop 1000 hash-data
           --profile=Default "Welcome CryptoBroker"'
 ```
 

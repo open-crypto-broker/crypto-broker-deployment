@@ -86,6 +86,27 @@ To uninstall the Helm deployment run:
 task kube-destroy
 ```
 
+### Stress Testing
+
+The CLI-Go stress benchmark must run in the deployed workload because clients
+connect to the broker through a local Unix socket.
+
+For Cloud Foundry:
+
+```shell
+task cf-deploy CLIENT=go
+task cf-stress-test CONCURRENT=100 NUM=100
+```
+
+For Kubernetes:
+
+```shell
+task minikube-images TAG=v0.4.1
+task kube-prepare-stress-client BRANCH=v0.4.1 TAG=v0.4.1
+task kube-deploy TAG=v0.4.1 STRESS_ENABLED=true STRESS_CONCURRENT=100 STRESS_NUM=100
+task kube-stress-test
+```
+
 ### Docker Compose with Observability — Jaeger and Grafana
 
 You can run Jaeger and Grafana (with Loki for logs) locally using Taskfile tasks provided in this repository.

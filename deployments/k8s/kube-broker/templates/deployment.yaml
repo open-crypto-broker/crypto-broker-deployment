@@ -25,11 +25,12 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
+        {{- if not .Values.stress.enabled }}
         # JS CLI App with hashing request
         - name: "{{ .Values.cliAppJs.name }}-hashing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppJs.image.name }}:{{ .Chart.AppVersion }}"
+          image: "{{ .Values.cliAppJs.image.name }}:{{ .Values.imageTag }}"
           imagePullPolicy: {{ .Values.cliAppJs.image.pullPolicy }}
           envFrom:
             - configMapRef:
@@ -49,7 +50,7 @@ spec:
         - name: "{{ .Values.cliAppJs.name }}-signing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppJs.image.name }}:{{ .Chart.AppVersion }}"
+          image: "{{ .Values.cliAppJs.image.name }}:{{ .Values.imageTag }}"
           imagePullPolicy: {{ .Values.cliAppJs.image.pullPolicy }}
           envFrom:
             - configMapRef:
@@ -69,7 +70,7 @@ spec:
         - name: "{{ .Values.cliAppGo.name }}-hashing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppGo.image.name }}:{{ .Chart.AppVersion }}"
+          image: "{{ .Values.cliAppGo.image.name }}:{{ .Values.imageTag }}"
           imagePullPolicy: {{ .Values.cliAppGo.image.pullPolicy }}
           envFrom:
             - configMapRef:
@@ -89,7 +90,7 @@ spec:
         - name: "{{ .Values.cliAppGo.name }}-signing"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppGo.image.name }}:{{ .Chart.AppVersion }}"
+          image: "{{ .Values.cliAppGo.image.name }}:{{ .Values.imageTag }}"
           imagePullPolicy: {{ .Values.cliAppGo.image.pullPolicy }}
           envFrom:
             - configMapRef:
@@ -104,12 +105,38 @@ spec:
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+        {{- end }}
+
+        {{- if .Values.stress.enabled }}
+        # CLI-Go stress-test runner
+        - name: stress-test
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.stress.image.name }}:{{ .Values.imageTag }}"
+          imagePullPolicy: {{ .Values.stress.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "kube-broker.fullname" . }}-clientconfig
+          env:
+            - name: STRESS_BENCHMARK_ENABLED
+              value: "true"
+            - name: STRESS_CONCURRENT
+              value: {{ .Values.stress.concurrent | quote }}
+            - name: STRESS_COUNT
+              value: {{ .Values.stress.num | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
 
         # Server App, the Broker
         - name: {{ .Values.serverApp.name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.serverApp.image.name }}:{{ .Chart.AppVersion }}"
+          image: "{{ .Values.serverApp.image.name }}:{{ .Values.imageTag }}"
           imagePullPolicy: {{ .Values.serverApp.image.pullPolicy }}
           envFrom:
             - configMapRef:

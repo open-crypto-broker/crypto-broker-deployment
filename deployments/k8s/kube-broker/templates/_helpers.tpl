@@ -36,8 +36,8 @@ Common labels
 {{- define "kube-broker.labels" -}}
 helm.sh/chart: {{ include "kube-broker.chart" . }}
 {{ include "kube-broker.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- if .Values.imageTag }}
+app.kubernetes.io/version: {{ .Values.imageTag | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}

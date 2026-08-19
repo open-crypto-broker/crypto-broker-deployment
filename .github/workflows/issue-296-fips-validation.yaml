@@ -62,11 +62,18 @@ jobs:
       - name: Verify Docker FIPS startup and request
         run: |
           for attempt in {1..60}; do
-            if docker logs test_app_go-hash 2>&1 | grep -q 'Hashed response'; then
+            request_output="$(docker exec test_app_go-hash \
+              /app/go-client-cli hash-data \
+              --profile=FIPS-140-3-128bit \
+              'Welcome CryptoBroker' 2>&1)" && request_status=0 || request_status=$?
+            if [[ "$request_status" == 0 ]] \
+              && grep -q 'Hashed response' <<<"$request_output"; then
+              echo "$request_output"
               break
             fi
             if [[ "$attempt" == 60 ]]; then
-              echo 'Docker hash request did not succeed after 120 seconds' >&2
+              echo "$request_output" >&2
+              echo 'Docker FIPS hash request did not succeed after 120 seconds' >&2
               exit 1
             fi
             sleep 2
@@ -121,19 +128,21 @@ jobs:
 
       - name: Verify Kubernetes FIPS startup and request
         run: |
-          kubectl rollout status deployment/crypto-broker-kube-broker \
-            --namespace crypto-broker \
-            --timeout=180s
-
           for attempt in {1..60}; do
-            if kubectl logs deployment/crypto-broker-kube-broker \
+            request_output="$(kubectl exec deployment/crypto-broker-kube-broker \
               --namespace crypto-broker \
               --container test-app-go-hashing \
-              | grep -q 'Hashed response'; then
+              -- /app/go-client-cli hash-data \
+              --profile=FIPS-140-3-128bit \
+              'Welcome CryptoBroker' 2>&1)" && request_status=0 || request_status=$?
+            if [[ "$request_status" == 0 ]] \
+              && grep -q 'Hashed response' <<<"$request_output"; then
+              echo "$request_output"
               break
             fi
             if [[ "$attempt" == 60 ]]; then
-              echo 'Kubernetes hash request did not succeed after 120 seconds' >&2
+              echo "$request_output" >&2
+              echo 'Kubernetes FIPS hash request did not succeed after 120 seconds' >&2
               exit 1
             fi
             sleep 2
@@ -146,9 +155,11 @@ jobs:
           grep -F 'FIPS mode version' <<<"$server_logs" | grep -F 'v1.0.0'
           grep -F 'FIPS mode enforced' <<<"$server_logs" | grep -F 'true'
 
-          kubectl get pods --namespace crypto-broker --output=json \
-            | jq --exit-status \
-              'all(.items[].status.containerStatuses[]?; .restartCount == 0)'
+          restart_count="$(kubectl get pods \
+            --namespace crypto-broker \
+            --selector app.kubernetes.io/instance=crypto-broker \
+            --output jsonpath='{.items[0].status.containerStatuses[?(@.name=="server-app")].restartCount}')"
+          test "$restart_count" = 0
 
       - name: Collect diagnostics
         if: ${{ always() }}

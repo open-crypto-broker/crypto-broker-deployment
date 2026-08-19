@@ -4,6 +4,10 @@ This repository features two purposes.
 On the one hand, it describes how to deploy the Crypto Broker Server and how to use the Crypto Broker client libraries through CLI test applications, as well as how to run both on Cloud Foundry and Kubernetes.
 On the other hand it can perform end-to-end tests which simulate the usage of the Crypto Broker Server and the different Crypto Broker Clients from a user perspective.
 
+See the [FIPS deployment testing guide](testing/fips.md) to build the server
+with a selected Go FIPS module and enforce strict mode on Cloud Foundry,
+Kubernetes, or Docker Compose.
+
 ## Cross Compilation and Branch Support
 
 For several tasks it is possible to specify for which Operating System (OS) and Architecture (ARCH) the software shall be build.

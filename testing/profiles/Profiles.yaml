@@ -74,6 +74,7 @@
     SignCertificate:
       SignAlg: ecdsa
       HashAlg: sha-512
+      SKIHashAlg: sha-256
       Validity:
         ValidNotBeforeOffset: -1h
         ValidNotAfterOffset: 8760h
@@ -110,6 +111,7 @@
     SignCertificate:
       SignAlg: rsa
       HashAlg: sha-384
+      SKIHashAlg: sha-256
       Validity:
         ValidNotBeforeOffset: -1h
         ValidNotAfterOffset: 26280h
@@ -146,6 +148,7 @@
     SignCertificate:
       SignAlg: ecdsa
       HashAlg: sha-512 # Using sha-512 as sha3-512 is not yet supported in Go crypto in combination with ecdsa
+      SKIHashAlg: sha-256
       Validity:
         ValidNotBeforeOffset: -1h
         ValidNotAfterOffset: 43800h
@@ -181,6 +184,7 @@
     SignCertificate:
       SignAlg: rsa
       HashAlg: sha-256
+      SKIHashAlg: sha-256
       Validity:
         ValidNotBeforeOffset: -1h
         ValidNotAfterOffset: 8760h
@@ -219,6 +223,7 @@
     SignCertificate:
       SignAlg: ecdsa
       HashAlg: sha-384
+      SKIHashAlg: sha-384
       Validity:
         ValidNotBeforeOffset: -1h
         ValidNotAfterOffset: 8760h
@@ -257,6 +262,7 @@
     SignCertificate:
       SignAlg: ecdsa
       HashAlg: sha-512
+      SKIHashAlg: sha-512
       Validity:
         ValidNotBeforeOffset: -1h
         ValidNotAfterOffset: 4380h

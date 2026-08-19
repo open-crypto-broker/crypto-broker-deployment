@@ -63,6 +63,7 @@ stress:
 
 serverApp:
   name: server-app
+  fipsGODEBUG: fips140=off
   image:
     name: ghcr.io/open-crypto-broker/server
     pullPolicy: IfNotPresent

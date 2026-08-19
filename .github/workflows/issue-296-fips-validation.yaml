@@ -62,22 +62,22 @@ jobs:
       - name: Verify Docker FIPS startup and request
         run: |
           for attempt in {1..60}; do
-            request_output="$(docker exec test_app_go-hash \
-              /app/go-client-cli hash-data \
-              --profile=FIPS-140-3-128bit \
-              'Welcome CryptoBroker' 2>&1)" && request_status=0 || request_status=$?
-            if [[ "$request_status" == 0 ]] \
-              && grep -q 'Hashed response' <<<"$request_output"; then
-              echo "$request_output"
+            if docker logs test_app_go-hash 2>&1 | grep -q 'Hashed response'; then
               break
             fi
             if [[ "$attempt" == 60 ]]; then
-              echo "$request_output" >&2
-              echo 'Docker FIPS hash request did not succeed after 120 seconds' >&2
+              echo 'Docker client was not ready after 120 seconds' >&2
               exit 1
             fi
             sleep 2
           done
+
+          docker exec test_app_go-hash \
+            /app/go-client-cli hash-data \
+            --profile=FIPS-140-3-128bit \
+            'Welcome CryptoBroker' 2>&1 \
+            | tee /tmp/docker-fips-request.log
+          grep -F 'Hashed response' /tmp/docker-fips-request.log
 
           server_logs="$(docker logs crypto-broker-server 2>&1)"
           grep -F 'FIPS mode is enabled' <<<"$server_logs"
@@ -129,24 +129,28 @@ jobs:
       - name: Verify Kubernetes FIPS startup and request
         run: |
           for attempt in {1..60}; do
-            request_output="$(kubectl exec deployment/crypto-broker-kube-broker \
+            if kubectl logs deployment/crypto-broker-kube-broker \
               --namespace crypto-broker \
               --container test-app-go-hashing \
-              -- /app/go-client-cli hash-data \
-              --profile=FIPS-140-3-128bit \
-              'Welcome CryptoBroker' 2>&1)" && request_status=0 || request_status=$?
-            if [[ "$request_status" == 0 ]] \
-              && grep -q 'Hashed response' <<<"$request_output"; then
-              echo "$request_output"
+              2>/dev/null | grep -q 'Hashed response'; then
               break
             fi
             if [[ "$attempt" == 60 ]]; then
-              echo "$request_output" >&2
-              echo 'Kubernetes FIPS hash request did not succeed after 120 seconds' >&2
+              echo 'Kubernetes client was not ready after 120 seconds' >&2
               exit 1
             fi
             sleep 2
           done
+
+
+          kubectl exec deployment/crypto-broker-kube-broker \
+            --namespace crypto-broker \
+            --container test-app-go-hashing \
+            -- /app/go-client-cli hash-data \
+            --profile=FIPS-140-3-128bit \
+            'Welcome CryptoBroker' 2>&1 \
+            | tee /tmp/kubernetes-fips-request.log
+          grep -F 'Hashed response' /tmp/kubernetes-fips-request.log
 
           server_logs="$(kubectl logs deployment/crypto-broker-kube-broker \
             --namespace crypto-broker \

@@ -61,8 +61,10 @@ Check the application and the server logs:
 
 ```shell
 cf app crypto-broker-go-cli
-cf logs crypto-broker-go-cli --recent \
-  | grep -E 'FIPS mode is enabled|FIPS mode version|FIPS mode enforced'
+cf_logs="$(cf logs crypto-broker-go-cli --recent)"
+grep -F 'FIPS mode is enabled' <<<"$cf_logs"
+grep -F 'FIPS mode version' <<<"$cf_logs" | grep -F 'v1.0.0'
+grep -F 'FIPS mode enforced' <<<"$cf_logs" | grep -F 'true'
 ```
 
 Run a request through the deployed client:
@@ -72,7 +74,11 @@ cf ssh crypto-broker-go-cli -c \
   "./app/go-client-cli hash-data \
   --profile=FIPS-140-3-128bit \
   'Welcome CryptoBroker'"
+cf app crypto-broker-go-cli
 ```
+
+Confirm that the application remains started after the request and that its
+start time did not change.
 
 Remove the test deployment after the result is recorded:
 

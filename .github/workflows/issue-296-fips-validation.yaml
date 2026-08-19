@@ -147,7 +147,7 @@ jobs:
             --namespace crypto-broker \
             --container test-app-go-hashing \
             -- /app/go-client-cli hash-data \
-            --profile=FIPS-140-3-128bit \
+            --profile=Default \
             'Welcome CryptoBroker' 2>&1 \
             | tee /tmp/kubernetes-fips-request.log
           grep -F 'Hashed response' /tmp/kubernetes-fips-request.log

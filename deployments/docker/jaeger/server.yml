@@ -22,6 +22,7 @@ services:
       - backend
     restart: always
     volumes:
+      - ../../../testing/profiles:/app/profiles:ro
       - shared_data:/tmp
 volumes:
   shared_data:

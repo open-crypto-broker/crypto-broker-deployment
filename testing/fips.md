@@ -162,6 +162,18 @@ task kube-destroy
 
 ## Test results
 
-Add a result only after the platform test has run. Record the source revisions,
-platform version, FIPS module version, runtime setting, server log evidence,
-client result, and cleanup result.
+The automated Docker Compose and Minikube validation ran on 2026-08-19. It used
+server commit `402991d`, deployment validation commit `5c72c49`, Go FIPS module
+`v1.0.0`, and runtime setting `fips140=only`.
+
+- Docker Compose passed. The server reported FIPS enabled, version `v1.0.0`,
+  and enforced mode. A `FIPS-140-3-128bit` SHA-256 request succeeded. The
+  server restart count remained zero.
+- Minikube `v1.38.1` passed. The server reported FIPS enabled, version
+  `v1.0.0`, and enforced mode. A SHA-256 request using the packaged `Default`
+  profile succeeded. The server restart count remained zero.
+- Cloud Foundry is pending. Run the manual procedure above in a non-production
+  space.
+
+The [temporary validation run](https://github.com/open-crypto-broker/crypto-broker-deployment/actions/runs/32255578984)
+also removed the Docker Compose deployment and Minikube cluster after the tests.

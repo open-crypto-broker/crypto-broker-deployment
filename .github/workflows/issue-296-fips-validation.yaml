@@ -1,0 +1,171 @@
+name: Temporary Issue 296 FIPS Validation
+
+on:
+  push:
+    branches:
+      - validation/issue-296-fips
+
+concurrency:
+  group: issue-296-fips-validation
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FIPS_MODE_MODULE_VERSION: v1.0.0
+  FIPS_GODEBUG_VALUE: fips140=only
+  TAG: fips-test
+
+jobs:
+  docker-minikube-smoke-test:
+    name: Docker and Minikube FIPS smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout deployment repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout application repositories
+        run: |
+          git clone --branch feature/issue-296-fips-container --single-branch \
+            https://github.com/open-crypto-broker/crypto-broker-server.git
+          git -C crypto-broker-server submodule update --init
+          git clone --branch main --single-branch \
+            https://github.com/open-crypto-broker/crypto-broker-cli-go.git
+          git clone --branch main --single-branch \
+            https://github.com/open-crypto-broker/crypto-broker-cli-js.git
+
+      - name: Build FIPS application images
+        working-directory: deployments/docker/jaeger
+        run: |
+          docker compose \
+            -f jaeger.yml \
+            -f server.yml \
+            -f test_app_js.yml \
+            -f test_app_go.yml \
+            build
+
+      - name: Start Docker Compose in strict mode
+        working-directory: deployments/docker/jaeger
+        run: |
+          docker compose \
+            -f jaeger.yml \
+            -f server.yml \
+            -f test_app_js.yml \
+            -f test_app_go.yml \
+            up --detach
+
+      - name: Verify Docker FIPS startup and request
+        run: |
+          for attempt in {1..60}; do
+            if docker logs test_app_go-hash 2>&1 | grep -q 'Hashed response'; then
+              break
+            fi
+            if [[ "$attempt" == 60 ]]; then
+              echo 'Docker hash request did not succeed after 120 seconds' >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          server_logs="$(docker logs crypto-broker-server 2>&1)"
+          grep -F 'FIPS mode is enabled' <<<"$server_logs"
+          grep -F 'FIPS mode version' <<<"$server_logs" | grep -F 'v1.0.0'
+          grep -F 'FIPS mode enforced' <<<"$server_logs" | grep -F 'true'
+
+          test "$(docker inspect --format '{{.RestartCount}}' crypto-broker-server)" = 0
+
+      - name: Stop Docker Compose
+        if: ${{ always() }}
+        working-directory: deployments/docker/jaeger
+        run: |
+          docker compose \
+            -f jaeger.yml \
+            -f server.yml \
+            -f test_app_js.yml \
+            -f test_app_go.yml \
+            down --volumes || true
+
+      - name: Install Task
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Minikube
+        env:
+          MINIKUBE_SHA256: 099477eaf248bcb5bcea8ce78a2898e93ac01461c35189da1848c3de82ecd22e
+          MINIKUBE_VERSION: v1.38.1
+        run: |
+          curl --fail --location --silent --show-error \
+            "https://github.com/kubernetes/minikube/releases/download/${MINIKUBE_VERSION}/minikube-linux-amd64" \
+            --output minikube
+          echo "${MINIKUBE_SHA256}  minikube" | sha256sum --check
+          sudo install minikube /usr/local/bin/minikube
+
+      - name: Start Kubernetes
+        run: minikube start --driver=docker --cpus=2 --memory=4096
+
+      - name: Load FIPS application images
+        run: task minikube-images TAG="$TAG"
+
+      - name: Deploy Kubernetes workload in strict mode
+        run: |
+          task kube-deploy \
+            TAG="$TAG" \
+            FIPS_GODEBUG_VALUE="$FIPS_GODEBUG_VALUE"
+
+      - name: Verify Kubernetes FIPS startup and request
+        run: |
+          kubectl rollout status deployment/crypto-broker-kube-broker \
+            --namespace crypto-broker \
+            --timeout=180s
+
+          for attempt in {1..60}; do
+            if kubectl logs deployment/crypto-broker-kube-broker \
+              --namespace crypto-broker \
+              --container test-app-go-hashing \
+              | grep -q 'Hashed response'; then
+              break
+            fi
+            if [[ "$attempt" == 60 ]]; then
+              echo 'Kubernetes hash request did not succeed after 120 seconds' >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          server_logs="$(kubectl logs deployment/crypto-broker-kube-broker \
+            --namespace crypto-broker \
+            --container server-app)"
+          grep -F 'FIPS mode is enabled' <<<"$server_logs"
+          grep -F 'FIPS mode version' <<<"$server_logs" | grep -F 'v1.0.0'
+          grep -F 'FIPS mode enforced' <<<"$server_logs" | grep -F 'true'
+
+          kubectl get pods --namespace crypto-broker --output=json \
+            | jq --exit-status \
+              'all(.items[].status.containerStatuses[]?; .restartCount == 0)'
+
+      - name: Collect diagnostics
+        if: ${{ always() }}
+        run: |
+          kubectl get pods --namespace crypto-broker --output=wide || true
+          kubectl describe pods \
+            --selector app.kubernetes.io/instance=crypto-broker \
+            --namespace crypto-broker || true
+          kubectl logs deployment/crypto-broker-kube-broker \
+            --namespace crypto-broker \
+            --container server-app \
+            --tail=100 || true
+          kubectl logs deployment/crypto-broker-kube-broker \
+            --namespace crypto-broker \
+            --container test-app-go-hashing \
+            --tail=50 || true
+
+      - name: Stop Kubernetes
+        if: ${{ always() }}
+        run: minikube delete || true

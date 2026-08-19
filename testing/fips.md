@@ -32,7 +32,7 @@ A platform test is successful when:
 1. The deployed server starts and remains ready.
 2. The server logs report that FIPS mode is enabled.
 3. The logs report module version `v1.0.0` and `enforced=true`.
-4. The client completes a request with a `FIPS-140-3-*` profile.
+4. The client completes a request with a profile that strict mode permits.
 5. The server does not restart while the request is processed.
 
 The expected server log messages are:

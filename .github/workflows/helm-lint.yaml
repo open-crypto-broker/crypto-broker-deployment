@@ -1,0 +1,39 @@
+name: Helm Chart Lint
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions: {}
+
+jobs:
+  lint:
+    name: Lint Helm chart
+    permissions:
+      contents: read # for checking out code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: 'v3.19.0'
+
+      - name: Lint chart
+        run: helm lint --strict deployments/k8s/kube-broker
+
+      - name: Render templates with default values
+        run: helm template kube-broker deployments/k8s/kube-broker > /dev/null
+
+      - name: Render templates with optional features enabled
+        run: |
+          helm template kube-broker deployments/k8s/kube-broker \
+            --set stress.enabled=true \
+            --set imageCredentials.create=true \
+            --set serviceAccount.create=true > /dev/null

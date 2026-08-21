@@ -39,3 +39,44 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: gh release create "$TAG" --verify-tag -F release-notes.md
+
+  helm-chart:
+    name: Publish Helm chart
+    permissions:
+      contents: read # for checking out code
+      packages: write # for pushing the chart to GHCR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: 'v3.19.0'
+
+      - name: Package chart
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          mkdir -p dist
+          helm lint deployments/k8s/kube-broker
+          helm package deployments/k8s/kube-broker \
+            --version "$VERSION" --app-version "$VERSION" --destination dist
+
+      - name: Push chart to GHCR
+        env:
+          TAG: ${{ github.ref_name }}
+          OWNER: ${{ github.repository_owner }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${TAG#v}"
+          REPO="oci://ghcr.io/$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')/charts"
+          echo "$REGISTRY_PASSWORD" | helm registry login ghcr.io -u "$REGISTRY_USER" --password-stdin
+          helm push "dist/kube-broker-${VERSION}.tgz" "$REPO"
+          echo "Published $REPO/kube-broker:$VERSION" >> "$GITHUB_STEP_SUMMARY"

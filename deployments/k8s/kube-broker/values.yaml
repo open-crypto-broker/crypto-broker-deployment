@@ -5,8 +5,11 @@
 # set the namespace for all variables
 namespace: crypto-broker
 
-# Tag shared by the server and client images in this deployment.
-imageTag: dev
+# Tag shared by the server and client images in this deployment. A release tag rather
+# than dev: dev is not rebuilt (the current one dates from 2025-11) and, being mutable,
+# lets the contents of a deployment change with nothing to show for it. v0.4.1 is the
+# newest release all three images have -- test_app_go stops there.
+imageTag: v0.4.1
 
 # sets the number of replicas, originally set to 1
 replicaCount: 1
@@ -22,17 +25,16 @@ cliAppJs:
   image:
     name: ghcr.io/open-crypto-broker/test_app_js
     pullPolicy: IfNotPresent
-  # The JS CLI takes --profile as a global option, so it has to precede the
-  # subcommand; passed after it, argparse exits 2 and the container crash-loops.
+  # js-client-cli takes --loop globally and --profile per subcommand.
   argHash:
     - --loop=1000
+    - hash-data
     - --profile=Default
-    - hash
     - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
   argSign:
     - --loop=1000
+    - sign-certificate
     - --profile=Default
-    - sign
     - --csr=/certificates/end-entity.csr
     - --caCert=/certificates/ca_cert.pem
     - --caKey=/certificates/private_key.pem
@@ -42,14 +44,15 @@ cliAppGo:
   image:
     name: ghcr.io/open-crypto-broker/test_app_go
     pullPolicy: IfNotPresent
+  # go-client-cli is cobra: every flag, --loop included, belongs to the subcommand.
   argHash:
+    - hash-data
     - --loop=1000
-    - hash
     - --profile=Default
     - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
   argSign:
+    - sign-certificate
     - --loop=1000
-    - sign
     - --profile=Default
     - --csr=/certificates/end-entity.csr
     - --caCert=/certificates/ca_cert.pem

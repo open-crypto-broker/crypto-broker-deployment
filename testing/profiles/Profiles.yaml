@@ -178,6 +178,8 @@
     EncryptData:
       EncryptAlg: aes-gcm
       KeySize: 128
+      NonceStrategy: user-provided
+      TagLength: 96
     SignCertificate:
       SignAlg: rsa
       HashAlg: sha-256
@@ -216,6 +218,8 @@
     EncryptData:
       EncryptAlg: aes-gcm
       KeySize: 192
+      NonceStrategy: user-provided
+      TagLength: 112
     SignCertificate:
       SignAlg: ecdsa
       HashAlg: sha-384
@@ -254,6 +258,8 @@
     EncryptData:
       EncryptAlg: aes-gcm
       KeySize: 256
+      NonceStrategy: user-provided
+      TagLength: 128
     SignCertificate:
       SignAlg: ecdsa
       HashAlg: sha-512

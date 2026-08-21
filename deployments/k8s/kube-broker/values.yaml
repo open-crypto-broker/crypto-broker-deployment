@@ -22,15 +22,17 @@ cliAppJs:
   image:
     name: ghcr.io/open-crypto-broker/test_app_js
     pullPolicy: IfNotPresent
+  # The JS CLI takes --profile as a global option, so it has to precede the
+  # subcommand; passed after it, argparse exits 2 and the container crash-loops.
   argHash:
     - --loop=1000
-    - hash
     - --profile=Default
+    - hash
     - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
   argSign:
     - --loop=1000
-    - sign
     - --profile=Default
+    - sign
     - --csr=/certificates/end-entity.csr
     - --caCert=/certificates/ca_cert.pem
     - --caKey=/certificates/private_key.pem

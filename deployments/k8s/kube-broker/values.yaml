@@ -42,12 +42,12 @@ cliAppGo:
     pullPolicy: IfNotPresent
   argHash:
     - --loop=1000
-    - hash
+    - hash-data
     - --profile=Default
     - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
   argSign:
     - --loop=1000
-    - sign
+    - sign-certificate
     - --profile=Default
     - --csr=/certificates/end-entity.csr
     - --caCert=/certificates/ca_cert.pem
@@ -63,6 +63,7 @@ stress:
 
 serverApp:
   name: server-app
+  fipsGODEBUG: fips140=off
   image:
     name: ghcr.io/open-crypto-broker/server
     pullPolicy: IfNotPresent

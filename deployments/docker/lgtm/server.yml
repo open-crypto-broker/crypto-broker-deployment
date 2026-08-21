@@ -5,8 +5,11 @@ services:
     build:
       dockerfile: docker/Dockerfile
       context: ../../../crypto-broker-server
+      args:
+        GOFIPS140: ${FIPS_MODE_MODULE_VERSION:-off}
     environment:
       - CRYPTO_BROKER_PROFILES_DIR=/app/profiles
+      - GODEBUG=${FIPS_GODEBUG_VALUE:-fips140=off}
       - OTEL_SERVICE_NAME=test-crypto-broker-server
       - OTEL_LOGS_EXPORTER=console,otlpgrpc
       - OTEL_TRACES_EXPORTER=otlpgrpc
@@ -19,6 +22,7 @@ services:
       - backend
     restart: always
     volumes:
+      - ../../../testing/profiles:/app/profiles:ro
       - shared_data:/tmp
 volumes:
   shared_data:

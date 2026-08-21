@@ -23,7 +23,7 @@ applications:
       - name: crypto-broker-server
         health-check-type: process
         process_types: [web]
-        command: 'OTEL_SERVICE_NAME=test-crypto-broker-server OTEL_METRICS_EXPORTER=otlpgrpc OTEL_METRICS_INTERVAL=10s CRYPTO_BROKER_PROFILES_DIR=$PWD ./cryptobroker-server'
+        command: 'GODEBUG=((fips_godebug_value)) OTEL_SERVICE_NAME=test-crypto-broker-server OTEL_METRICS_EXPORTER=otlpgrpc OTEL_METRICS_INTERVAL=10s CRYPTO_BROKER_PROFILES_DIR=$PWD ./cryptobroker-server'
       - name: crypto-broker-client-profile-default
         health-check-type: process
         process_types: [web]

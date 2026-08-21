@@ -196,6 +196,7 @@ tasks:
       BRANCH: '{{.BRANCH | default "main"}}'
       OS: '{{.OS}}'
       ARCH: '{{.ARCH}}'
+      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
     cmds:
       - task: delete-crypto-broker-server
       - task: clone-crypto-broker-server
@@ -205,6 +206,7 @@ tasks:
         vars:
           OS: '{{.OS}}'
           ARCH: '{{.ARCH}}'
+          FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION}}'
 
   delete-crypto-broker-server:
     desc: "Delete Crypto Broker server source folder"
@@ -231,7 +233,13 @@ tasks:
       - test -d crypto-broker-server
     dir: crypto-broker-server
     cmds:
-      - GOOS={{.OS}} GOARCH={{.ARCH}} go build -o bin/cryptobroker-server cmd/server/server.go
+      - GOFIPS140={{.FIPS_MODE_MODULE_VERSION}} GOOS={{.OS}} GOARCH={{.ARCH}}
+          go build -o bin/cryptobroker-server cmd/server/server.go
+      - |
+        if [ "{{.FIPS_MODE_MODULE_VERSION}}" != "off" ]; then
+          go version -m bin/cryptobroker-server \
+            | grep -F "GOFIPS140={{.FIPS_MODE_MODULE_VERSION}}"
+        fi
 
   ################# Cleanup Tasks ####################
   delete-all:
@@ -343,6 +351,7 @@ tasks:
           BRANCH: '{{.BRANCH}}'
           OS: '{{.OS}}'
           ARCH: '{{.ARCH}}'
+          FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
       - for: { var: CLIENTS }
         task: build-cli
         vars:
@@ -789,6 +798,8 @@ tasks:
       BRANCH: '{{.BRANCH | default "main"}}'
       OS: '{{.OS | default "linux"}}'
       ARCH: '{{.ARCH | default "amd64"}}'
+      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
+      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
     requires:
       vars:
         - name: CLIENT
@@ -802,6 +813,7 @@ tasks:
           BRANCH: '{{.BRANCH}}'
           OS: '{{.OS}}'
           ARCH: '{{.ARCH}}'
+          FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION}}'
       - task: build-cli
         vars:
           CLIENT: '{{.CLIENT}}'
@@ -819,7 +831,10 @@ tasks:
           CLIENT: '{{.CLIENT}}'
       - task: copy-{{.CLIENT}}-cli
       - task: copy-otel-collector
-      - cf push --random-route -f deployments/cloud-foundry/{{.CLIENT}}/manifest.yaml -p deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+      - cf push --random-route
+          --var fips_godebug_value={{.FIPS_GODEBUG_VALUE}}
+          -f deployments/cloud-foundry/{{.CLIENT}}/manifest.yaml
+          -p deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
 
   cf-delete:
     desc: "Delete the deployment folders and also on Cloud Foundry the deployment of Crypto Broker server and the specified client with CLIENT='', values are 'go', 'js'"
@@ -948,12 +963,14 @@ tasks:
       STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
       STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
       STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
+      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
     cmds:
       - helm upgrade --install -f Chart.yaml -f values.yaml
           --set imageTag="{{.TAG}}"
           --set stress.enabled="{{.STRESS_ENABLED}}"
           --set stress.concurrent="{{.STRESS_CONCURRENT}}"
           --set stress.num="{{.STRESS_NUM}}"
+          --set-string serverApp.fipsGODEBUG="{{.FIPS_GODEBUG_VALUE}}"
           crypto-broker --namespace crypto-broker --create-namespace .
 
   kube-destroy:
@@ -984,12 +1001,14 @@ tasks:
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       TAG: '{{.TAG | default "dev"}}'
+      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
     deps:
       - task: build-dependencies
         vars:
           BRANCH: '{{.BRANCH}}'
     cmds:
-      - TAG={{.TAG}} docker compose -f jaeger.yml
+      - FIPS_MODE_MODULE_VERSION={{.FIPS_MODE_MODULE_VERSION}} TAG={{.TAG}}
+          docker compose -f jaeger.yml
           -f server.yml
           -f test_app_js.yml
           -f test_app_go.yml build
@@ -1003,8 +1022,10 @@ tasks:
           enum: [up, down]
     vars:
       TAG: '{{.TAG | default "dev"}}'
+      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
     cmds:
-      - TAG={{.TAG}} docker compose -f jaeger.yml
+      - FIPS_GODEBUG_VALUE={{.FIPS_GODEBUG_VALUE}} TAG={{.TAG}}
+          docker compose -f jaeger.yml
           -f server.yml
           -f test_app_js.yml
           -f test_app_go.yml {{.CMD}}
@@ -1015,12 +1036,14 @@ tasks:
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
       TAG: '{{.TAG | default "dev"}}'
+      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
     deps:
       - task: build-dependencies
         vars:
           BRANCH: '{{.BRANCH}}'
     cmds:
-      - TAG={{.TAG}} docker compose -f observability.yml
+      - FIPS_MODE_MODULE_VERSION={{.FIPS_MODE_MODULE_VERSION}} TAG={{.TAG}}
+          docker compose -f observability.yml
           -f server.yml
           -f test_app_js.yml
           -f test_app_go.yml build
@@ -1034,8 +1057,10 @@ tasks:
           enum: [up, down]
     vars:
       TAG: '{{.TAG | default "dev"}}'
+      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
     cmds:
-      - TAG={{.TAG}} docker compose -f observability.yml
+      - FIPS_GODEBUG_VALUE={{.FIPS_GODEBUG_VALUE}} TAG={{.TAG}}
+          docker compose -f observability.yml
           -f server.yml
           -f test_app_js.yml
           -f test_app_go.yml {{.CMD}}

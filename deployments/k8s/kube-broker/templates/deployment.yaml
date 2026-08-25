@@ -141,6 +141,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "kube-broker.fullname" . }}-serverconfig
+          env:
+            - name: GODEBUG
+              value: {{ .Values.serverApp.fipsGODEBUG | quote }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- with .Values.volumeMounts }}

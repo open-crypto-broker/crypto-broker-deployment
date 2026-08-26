@@ -21,136 +21,63 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      serviceAccountName: {{ include "kube-broker.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
-        {{- if not .Values.stress.enabled }}
-        # JS CLI App with hashing request
-        - name: "{{ .Values.cliAppJs.name }}-hashing"
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppJs.image.name }}:{{ .Values.imageTag }}"
-          imagePullPolicy: {{ .Values.cliAppJs.image.pullPolicy }}
-          envFrom:
-            - configMapRef:
-                name: {{ include "kube-broker.fullname" . }}-clientconfig
-          {{- with .Values.cliAppJs.argHash }}
-          args:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-
-        # JS CLI App with signing request
-        - name: "{{ .Values.cliAppJs.name }}-signing"
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppJs.image.name }}:{{ .Values.imageTag }}"
-          imagePullPolicy: {{ .Values.cliAppJs.image.pullPolicy }}
-          envFrom:
-            - configMapRef:
-                name: {{ include "kube-broker.fullname" . }}-clientconfig
-          {{- with .Values.cliAppJs.argSign }}
-          args:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-
-        # Go CLI App with hashing request
-        - name: "{{ .Values.cliAppGo.name }}-hashing"
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppGo.image.name }}:{{ .Values.imageTag }}"
-          imagePullPolicy: {{ .Values.cliAppGo.image.pullPolicy }}
-          envFrom:
-            - configMapRef:
-                name: {{ include "kube-broker.fullname" . }}-clientconfig
-          {{- with .Values.cliAppGo.argHash }}
-          args:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-
-        # Go CLI App with signing request
-        - name: "{{ .Values.cliAppGo.name }}-signing"
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliAppGo.image.name }}:{{ .Values.imageTag }}"
-          imagePullPolicy: {{ .Values.cliAppGo.image.pullPolicy }}
-          envFrom:
-            - configMapRef:
-                name: {{ include "kube-broker.fullname" . }}-clientconfig
-          {{- with .Values.cliAppGo.argSign }}
-          args:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
-
-        {{- if .Values.stress.enabled }}
-        # CLI-Go stress-test runner
+        {{- if .Values.cliStressApp.enabled }}
+        # CLI-Go stress-test runner (replaces the functional test clients)
         - name: stress-test
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.stress.image.name }}:{{ .Values.imageTag }}"
-          imagePullPolicy: {{ .Values.stress.image.pullPolicy }}
-          envFrom:
-            - configMapRef:
-                name: {{ include "kube-broker.fullname" . }}-clientconfig
+          image: "{{ .Values.cliStressApp.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           env:
             - name: STRESS_BENCHMARK_ENABLED
               value: "true"
             - name: STRESS_CONCURRENT
-              value: {{ .Values.stress.concurrent | quote }}
+              value: {{ .Values.cliStressApp.concurrent | quote }}
             - name: STRESS_COUNT
-              value: {{ .Values.stress.num | quote }}
+              value: {{ .Values.cliStressApp.num | quote }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
           volumeMounts:
+            {{- include "kube-broker.volumeMounts" . | nindent 12 }}
+        {{- else }}
+        # CLI-test apps (functional test clients)
+        {{- range .Values.cliTestApps }}
+        - name: {{ .name }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
+          image: "{{ .image }}:{{ $.Values.imageTag }}"
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
+          {{- with .args }}
+          args:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          resources:
+            {{- toYaml $.Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "kube-broker.volumeMounts" $ | nindent 12 }}
+        {{- end }}
         {{- end }}
 
-        # Server App, the Broker
-        - name: {{ .Values.serverApp.name }}
+        # Crypto-broker server (the broker)
+        - name: {{ .Values.server.name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.serverApp.image.name }}:{{ .Values.imageTag }}"
-          imagePullPolicy: {{ .Values.serverApp.image.pullPolicy }}
+          image: "{{ .Values.server.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           envFrom:
             - configMapRef:
                 name: {{ include "kube-broker.fullname" . }}-serverconfig
           env:
             - name: GODEBUG
-              value: {{ .Values.serverApp.fipsGODEBUG | quote }}
+              value: {{ .Values.server.godebug | quote }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
           volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
+            {{- include "kube-broker.volumeMounts" . | nindent 12 }}
       volumes:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- include "kube-broker.volumes" . | nindent 8 }}

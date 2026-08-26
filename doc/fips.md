@@ -152,18 +152,18 @@ kubectl rollout status deployment/crypto-broker-kube-broker \
   --namespace crypto-broker
 kubectl logs deployment/crypto-broker-kube-broker \
   --namespace crypto-broker \
-  --container server-app \
+  --container crypto-broker-server \
   | grep -E 'FIPS mode is enabled|FIPS mode version|FIPS mode enforced'
 kubectl logs deployment/crypto-broker-kube-broker \
   --namespace crypto-broker \
-  --container test-app-go-hashing \
+  --container cli-go-hash \
   --tail 20
 ```
 
 Remove the deployment after the result is recorded:
 
 ```shell
-task kube-destroy
+task kube-down
 ```
 
 ## Test results

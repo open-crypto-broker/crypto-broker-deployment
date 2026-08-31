@@ -80,14 +80,19 @@ task minikube-images
 task kube-deploy
 ```
 
-This will deploy the Helm chart `kube-broker` in the `crypto-broker` namespace in your local kubernetes cluster. The cluster will spin up a server which listens on the Unix Socket and two CLI test apps that will send periodically requests (hash and sign) to the server.
+> Tip: `task kube-up` runs `minikube-images` and `kube-deploy` in one step.
 
-To modify the parameters of the deployment, you can modify the values of the [values file](deployments/k8s/kube-broker/values.yaml). This includes for example the image name and tag, the arguments for hashing and signing, the number of replicas and more. Feel free to check the [Kubernetes Readme](deployments/k8s/kube-broker/README.md) for a more detailed explanation of the different values and configuration options that can be set.
+This will deploy the Helm chart `kube-broker` in the `crypto-broker` namespace in your local kubernetes cluster.
+The cluster will spin up a server which listens on the Unix Socket and two CLI test apps that will send periodically requests (hash and sign) to the server.
+
+To modify the parameters of the deployment, you can modify the values of the [values file](deployments/k8s/kube-broker/values.yaml).
+This includes for example the image name and tag, the arguments for hashing and signing, the number of replicas and more.
+Feel free to check the [Kubernetes Readme](deployments/k8s/kube-broker/README.md) for a more detailed explanation of the different values and configuration options that can be set.
 
 To uninstall the Helm deployment run:
 
 ```shell
-task kube-destroy
+task kube-down
 ```
 
 ### Stress Testing
@@ -106,9 +111,9 @@ For Kubernetes:
 
 ```shell
 task minikube-images TAG=v0.4.1
-task kube-prepare-stress-client BRANCH=v0.4.1 TAG=v0.4.1
+task kube-prepare-stress-test BRANCH=v0.4.1 TAG=v0.4.1
 task kube-deploy TAG=v0.4.1 STRESS_ENABLED=true STRESS_CONCURRENT=100 STRESS_NUM=100
-task kube-stress-test
+task kube-run-stress-test
 ```
 
 ### Docker Compose with Observability — Jaeger and Grafana

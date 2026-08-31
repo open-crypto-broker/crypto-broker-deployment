@@ -51,12 +51,22 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Pod volumes shared by every container (server socket + test certificates).
 */}}
-{{- define "kube-broker.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "kube-broker.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "kube-broker.volumes" -}}
+- name: socket-volume
+  emptyDir: {}
+- name: certs-volume
+  configMap:
+    name: {{ include "kube-broker.fullname" . }}-certificates
 {{- end }}
+
+{{/*
+Volume mounts shared by every container.
+*/}}
+{{- define "kube-broker.volumeMounts" -}}
+- name: socket-volume
+  mountPath: /tmp
+- name: certs-volume
+  mountPath: /certificates
 {{- end }}

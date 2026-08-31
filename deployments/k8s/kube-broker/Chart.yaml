@@ -1,6 +1,15 @@
 apiVersion: v2
 name: kube-broker
-description: Helm chart for deploying the Crypto-broker app
+description: Deploys the crypto-broker server with Go/JS test clients (and an optional stress runner) in a single pod for integration testing.
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "dev"
+keywords:
+  - crypto-broker
+  - testing
+home: https://github.com/open-crypto-broker
+sources:
+  - https://github.com/open-crypto-broker/crypto-broker-deployment
+maintainers:
+  - name: Crypto Broker Team
+    url: https://github.com/open-crypto-broker

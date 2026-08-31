@@ -1,0 +1,14 @@
+{{ .Chart.Name }} was deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Pod / deployment: {{ include "kube-broker.fullname" . }}
+{{- if .Values.cliStressApp.enabled }}
+Mode: stress test ({{ .Values.cliStressApp.concurrent }} concurrent, {{ .Values.cliStressApp.num }} requests)
+{{- else }}
+Mode: functional test ({{ len .Values.cliTestApps }} client containers + server)
+{{- end }}
+
+Watch the pod start:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} -w
+
+Show a container's logs (replace CONTAINER, e.g. {{ .Values.server.name }}):
+  kubectl logs deployment/{{ include "kube-broker.fullname" . }} -n {{ .Release.Namespace }} -c CONTAINER

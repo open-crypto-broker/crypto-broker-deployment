@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: "kube-broker-certificates"
+  name: {{ include "kube-broker.fullname" . }}-certificates
   labels:
     {{- include "kube-broker.labels" . | nindent 4 }}
 data:

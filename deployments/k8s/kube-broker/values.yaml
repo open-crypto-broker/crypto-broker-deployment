@@ -1,103 +1,71 @@
-# Default values for kube-broker.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# Default values for the kube-broker chart.
+# Deploys the crypto-broker server together with Go/JS test clients (and an
+# optional stress-test runner) in a single pod for integration testing.
 
-# set the namespace for all variables
-namespace: crypto-broker
-
-# Tag shared by the server and client images in this deployment.
+# Tag shared by the server, client and stress images in this deployment.
 imageTag: dev
 
-# sets the number of replicas, originally set to 1
+# Pull policy shared by all images in the chart.
+imagePullPolicy: IfNotPresent
+
 replicaCount: 1
 
-# Path to crypto profiles
-profilesDir: /app/profiles
+nameOverride: ""
+fullnameOverride: ""
 
-# This is for the secrets for pulling an image from a private repository
-# imagePullSecrets: []
+server:
+  name: crypto-broker-server
+  image: ghcr.io/open-crypto-broker/server
+  # Directory the server reads profiles from; profiles are baked into the image.
+  profilesDir: /app/profiles
+  # fips140=off selects the non-FIPS build path.
+  godebug: fips140=off
 
-cliAppJs:
-  name: test-app-js
-  image:
-    name: ghcr.io/open-crypto-broker/test_app_js
-    pullPolicy: IfNotPresent
-  argHash:
-    - --loop=1000
-    - hash-data
-    - --profile=Default
-    - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
-  argSign:
-    - --loop=1000
-    - sign-certificate
-    - --profile=Default
-    - --csr=/certificates/end-entity.csr
-    - --caCert=/certificates/ca_cert.pem
-    - --caKey=/certificates/private_key.pem
+# Functional test clients exercised against the server over the shared socket.
+# Each entry becomes a container in the pod (skipped when cliStressApp.enabled is true).
+cliTestApps:
+  - name: cli-js-hash
+    image: ghcr.io/open-crypto-broker/test_app_js
+    args:
+      - --loop=1000
+      - hash-data
+      - --profile=Default
+      - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
+  - name: cli-js-sign
+    image: ghcr.io/open-crypto-broker/test_app_js
+    args:
+      - --loop=1000
+      - sign-certificate
+      - --profile=Default
+      - --csr=/certificates/end-entity.csr
+      - --caCert=/certificates/ca_cert.pem
+      - --caKey=/certificates/private_key.pem
+  - name: cli-go-hash
+    image: ghcr.io/open-crypto-broker/test_app_go
+    args:
+      - --loop=1000
+      - hash-data
+      - --profile=Default
+      - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
+  - name: cli-go-sign
+    image: ghcr.io/open-crypto-broker/test_app_go
+    args:
+      - --loop=1000
+      - sign-certificate
+      - --profile=Default
+      - --csr=/certificates/end-entity.csr
+      - --caCert=/certificates/ca_cert.pem
+      - --caKey=/certificates/private_key.pem
 
-cliAppGo:
-  name: test-app-go
-  image:
-    name: ghcr.io/open-crypto-broker/test_app_go
-    pullPolicy: IfNotPresent
-  argHash:
-    - --loop=1000
-    - hash-data
-    - --profile=Default
-    - "𝒮ℴ𝓂ℯ 𝒶𝓇𝒷𝒾𝓉𝓇𝒶𝓇𝓎 𝒷𝓎𝓉ℴ𝓈 𝓉ℴ 𝒽𝒶𝓈𝒽"
-  argSign:
-    - --loop=1000
-    - sign-certificate
-    - --profile=Default
-    - --csr=/certificates/end-entity.csr
-    - --caCert=/certificates/ca_cert.pem
-    - --caKey=/certificates/private_key.pem
-
-stress:
+# Optional stress-test runner. When enabled it replaces the functional test clients.
+cliStressApp:
   enabled: false
-  image:
-    name: ghcr.io/open-crypto-broker/stress_test
-    pullPolicy: IfNotPresent
+  image: ghcr.io/open-crypto-broker/stress_test
   concurrent: 100
   num: 100
 
-serverApp:
-  name: server-app
-  fipsGODEBUG: fips140=off
-  image:
-    name: ghcr.io/open-crypto-broker/server
-    pullPolicy: IfNotPresent
-
-volumes:
-  - name: socket-volume
-    emptyDir: {}
-  - name: certs-volume
-    configMap:
-      name: "kube-broker-certificates"
-
-volumeMounts:
-  - name: socket-volume
-    mountPath: /tmp
-  - name: certs-volume
-    mountPath: /certificates
-
-imageCredentials:
-  # Adjust this if any private image should be pulled automatically by the chart
-  create: false
-  secretName: example-secret
-  registry: "TODO: add docker repository"
-  username: ""             # Placeholder, will be overridden with enviroment variable
-  password: ""             # Placeholder, will be overridden with enviroment variable
-  email: ""                # Placeholder, will be overridden with enviroment variable
-
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: false
-  # Automatically mount a ServiceAccount's API credentials
-  automount: true
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
+podAnnotations: {}
+podLabels: {}
 
 podSecurityContext: {}
 

@@ -937,7 +937,46 @@ tasks:
           ghcr.io/open-crypto-broker/test_app_go:{{.TAG}}
           ghcr.io/open-crypto-broker/server:{{.TAG}}
 
-  kube-prepare-stress-client:
+  kube-deploy:
+    desc: "Deploys the Kubernetes Crypto Broker"
+    dir: deployments/k8s/kube-broker/
+    vars:
+      TAG: '{{.TAG | default "dev"}}'
+      STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
+      STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
+      STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
+      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
+    cmds:
+      - helm upgrade --install -f Chart.yaml -f values.yaml
+          --set imageTag="{{.TAG}}"
+          --set cliStressApp.enabled="{{.STRESS_ENABLED}}"
+          --set cliStressApp.concurrent="{{.STRESS_CONCURRENT}}"
+          --set cliStressApp.num="{{.STRESS_NUM}}"
+          --set-string server.godebug="{{.FIPS_GODEBUG_VALUE}}"
+          crypto-broker --namespace crypto-broker --create-namespace .
+
+  kube-up:
+    desc: "Convenience wrapper: load images into minikube, then deploy the chart"
+    vars:
+      TAG: '{{.TAG | default "dev"}}'
+    cmds:
+      - task: minikube-images
+        vars:
+          TAG: '{{.TAG}}'
+      - task: kube-deploy
+        vars:
+          TAG: '{{.TAG}}'
+          STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
+          STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
+          STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
+          FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
+
+  kube-down:
+    desc: "Destroys the Kubernetes Crypto Broker deployment"
+    cmds:
+      - helm uninstall crypto-broker -n crypto-broker
+
+  kube-prepare-stress-test:
     desc: "Build the Kubernetes stress-test image and load it into minikube"
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
@@ -951,37 +990,19 @@ tasks:
           OS: linux
           ARCH: '{{.ARCH}}'
       - docker build
-          -f deployments/k8s/stress-client.Dockerfile
+          -f deployments/k8s/kube-broker/build/stress-client.Dockerfile
           -t ghcr.io/open-crypto-broker/stress_test:{{.TAG}} .
       - minikube image load ghcr.io/open-crypto-broker/stress_test:{{.TAG}}
 
-  kube-deploy:
-    desc: "Deploys the Kubernetes Crypto Broker"
-    dir: deployments/k8s/kube-broker/
-    vars:
-      TAG: '{{.TAG | default "dev"}}'
-      STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
-      STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
-      STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
-      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
-    cmds:
-      - helm upgrade --install -f Chart.yaml -f values.yaml
-          --set imageTag="{{.TAG}}"
-          --set stress.enabled="{{.STRESS_ENABLED}}"
-          --set stress.concurrent="{{.STRESS_CONCURRENT}}"
-          --set stress.num="{{.STRESS_NUM}}"
-          --set-string serverApp.fipsGODEBUG="{{.FIPS_GODEBUG_VALUE}}"
-          crypto-broker --namespace crypto-broker --create-namespace .
-
-  kube-destroy:
-    desc: "Destroys the Kubernetes Crypto Broker deployment"
-    cmds:
-      - helm uninstall crypto-broker -n crypto-broker
-
-  kube-stress-test:
+  kube-run-stress-test:
     desc: "Run the CLI-Go stress test in the deployed Kubernetes pod"
     vars:
       COUNT: '{{.COUNT | default "1"}}'
+    preconditions:
+      - sh: minikube status --format '{{`{{.Host}}`}}' | grep -q Running
+        msg: "minikube is not running — start it with 'minikube start'."
+      - sh: kubectl get deployment/crypto-broker-kube-broker -n crypto-broker
+        msg: "Deployment not found — run 'task kube-deploy STRESS_ENABLED=true' first."
     cmds:
       - kubectl exec deployment/crypto-broker-kube-broker
           -n crypto-broker

@@ -21,3 +21,5 @@
 .idea/
 *.tmproj
 .vscode/
+# Image build context (not part of the packaged chart)
+build/

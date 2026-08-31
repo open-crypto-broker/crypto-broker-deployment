@@ -41,3 +41,30 @@ services:
       - --caKey=/certificates/test-ca/test-CA-nist-secp384r1.pem
     networks:
       - backend
+  test-app-js-encrypt:
+    <<: *app-base
+    container_name: test_app_js-encrypt
+    command:
+      - --loop=1000
+      - encrypt-data
+      - --profile=Default
+      - --keyRaw=67e1befda6538f162a308bb37b922441bed6e27039a26a48ad8e11c568c4cda0
+      - --nonce=a83f89b37c90f937b8df5011
+      - --aad=36e02c2a81c60eca849739d52dea95f7
+      - Welcome CryptoBroker
+    networks:
+      - backend
+  test-app-js-decrypt:
+    <<: *app-base
+    container_name: test_app_js-decrypt
+    command:
+      - --loop=1000
+      - decrypt-data
+      - --profile=Default
+      - --keyRaw=67e1befda6538f162a308bb37b922441bed6e27039a26a48ad8e11c568c4cda0
+      - --nonce=a83f89b37c90f937b8df5011
+      - --aad=36e02c2a81c60eca849739d52dea95f7
+      - --tag=a77b42e960d89683140cae283a87466e
+      - 71416b876fb0d65c484ec20106af15a36454743b
+    networks:
+      - backend

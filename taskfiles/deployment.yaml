@@ -155,8 +155,6 @@ tasks:
       - cp crypto-broker-cli-js/bin/js-client-cli deployments/cloud-foundry/js/js-deployment/
 
   ################# Kubernetes Deployment ####################
-
-
   kube-up:
     desc: "Deploy the Kubernetes Crypto Broker: load images into minikube, then deploy the chart"
     vars:

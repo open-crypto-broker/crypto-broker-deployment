@@ -59,6 +59,8 @@ Profiles:
   # Default profile kept minimal – broad demo; not tied to a single external standard.
   #   Reasoning: Showcases widest hash (sha3-512) and high-strength hash/sign combo for testing.
   - Name: Default
+    Settings:
+      CryptoLibrary: native
     API:
       HashData:
         HashAlg: sha3-512

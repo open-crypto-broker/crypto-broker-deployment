@@ -1,0 +1,321 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  # OpenTelemetry Collector configuration file path
+  OTEL_VERSION: 0.145.0
+  OTEL_DIST: otelcol
+  OTEL_URL: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v{{.OTEL_VERSION}}/{{.OTEL_DIST}}_{{.OTEL_VERSION}}_linux_amd64.tar.gz
+  OTEL_SHA256: b877c1886e8e41d496f294c7e8c38d85b9db79a97b4e8ee80e36ac67dff9a4de
+
+tasks:
+  ################# Cloud Foundry Deployment ####################
+  # Public tasks for Cloud Foundry deployment
+  # The deployment is done over several stages.
+  # First, the old deployment folder is deleted.
+  # Second, the Crypto Broker server is build.
+  # Third, the specified client is build.
+  # Fourth, the deployment repo is created.
+  # Fifth, the necessary files from the Crypto Broker are copied to the deployment folder.
+  # Sixth, the necessary files from the client are copied to the deployment folder.
+  # Seventh, the cf CLI is invoked and the app is pushed to Cloud Foundry.
+  cf-push:
+    desc: "Deploy to Cloud Foundry the Crypto Broker server and client specified with CLIENT='', values are 'go', 'js'. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+      OS: '{{.OS | default "linux"}}'
+      ARCH: '{{.ARCH | default "amd64"}}'
+      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
+      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
+    requires:
+      vars:
+        - name: CLIENT
+          enum: [go, js]
+    cmds:
+      - task: delete-deployment-folder
+        vars:
+          CLIENT: '{{.CLIENT}}'
+      - task: :build-server
+        vars:
+          BRANCH: '{{.BRANCH}}'
+          OS: '{{.OS}}'
+          ARCH: '{{.ARCH}}'
+          FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION}}'
+      - task: :build-cli
+        vars:
+          CLIENT: '{{.CLIENT}}'
+          BRANCH: '{{.BRANCH}}'
+          OS: '{{.OS}}'
+          ARCH: '{{.ARCH}}'
+      - task: create-deployment-folder
+        vars:
+          CLIENT: '{{.CLIENT}}'
+      - task: copy-crypto-broker-server
+        vars:
+          CLIENT: '{{.CLIENT}}'
+      - task: copy-test-certificates
+        vars:
+          CLIENT: '{{.CLIENT}}'
+      - task: copy-{{.CLIENT}}-cli
+      - task: copy-otel-collector
+      - cf push --random-route
+          --var fips_godebug_value={{.FIPS_GODEBUG_VALUE}}
+          -f deployments/cloud-foundry/{{.CLIENT}}/manifest.yaml
+          -p deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+
+  cf-delete:
+    desc: "Delete the deployment folders and also on Cloud Foundry the deployment of Crypto Broker server and the specified client with CLIENT='', values are 'go', 'js'"
+    requires:
+      vars:
+        - name: CLIENT
+          enum: [go, js]
+    cmds:
+        - task: delete-deployment-folder
+          vars:
+            CLIENT: '{{.CLIENT}}'
+        - cf delete -r -f crypto-broker-{{.CLIENT}}-cli
+
+  # Internal tasks for deployment to Cloud Foundry
+  create-deployment-folder:
+    desc: "Create the deployment folder for Cloud Foundry"
+    internal: true
+    cmds:
+      - mkdir deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment
+
+  delete-deployment-folder:
+    desc: "Delete the deployment folder for Cloud Foundry"
+    internal: true
+    cmds:
+      - rm -rf deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment
+
+  copy-crypto-broker-server:
+    desc: "Copy Crypto Broker server files to deployment folder"
+    internal: true
+    cmds:
+      - cp crypto-broker-server/bin/cryptobroker-server deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+      - cp testing/profiles/Profiles.yaml deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+
+  copy-test-certificates:
+    desc: "Copy test CSR and test CA certificate and CA private key to Cloud Foundry"
+    internal: true
+    cmds:
+      - cp -r testing/certificates deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+
+  download-otel-collector:
+    desc: "Download and extract the OpenTelemetry Collector binary"
+    internal: true
+    cmds:
+      - curl -L {{.OTEL_URL}} -o otelcol.tar.gz
+      - echo "{{.OTEL_SHA256}}  otelcol.tar.gz" | sha256sum -c -
+      - mkdir -p deployments/cloud-foundry/otel-collector/bin
+      - tar -xzf otelcol.tar.gz -C deployments/cloud-foundry/otel-collector/bin
+      - chmod +x deployments/cloud-foundry/otel-collector/bin/otelcol
+      - rm otelcol.tar.gz
+
+  copy-otel-collector:
+    desc: "Copy the OpenTelemetry Collector and its configuration file to the deployment folder"
+    deps: [download-otel-collector]
+    internal: true
+    cmds:
+      - cp deployments/cloud-foundry/otel-collector/bin/otelcol deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+      - cp deployments/cloud-foundry/otel-collector/otel-config.yaml deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+
+  # Go specific task
+  copy-go-cli:
+    desc: "Copy the necessary Go client files for Cloud Foundry deployment"
+    internal: true
+    cmds:
+      - cp crypto-broker-cli-go/bin/go-client-cli deployments/cloud-foundry/go/go-deployment
+      - cp crypto-broker-cli-go/bin/stress-test deployments/cloud-foundry/go/go-deployment
+
+  cf-stress-test:
+    desc: "Run the CLI-Go stress test in the deployed Cloud Foundry app"
+    vars:
+      CONCURRENT: '{{.CONCURRENT | default "100"}}'
+      NUM: '{{.NUM | default "100"}}'
+      COUNT: '{{.COUNT | default "1"}}'
+    cmds:
+      - cf ssh crypto-broker-go-cli -c
+          "STRESS_BENCHMARK_ENABLED=true
+          STRESS_CONCURRENT={{.CONCURRENT}}
+          STRESS_COUNT={{.NUM}}
+          ./app/stress-test
+          -test.run=^$
+          -test.bench=^BenchmarkStressHashConcurrentConnections$
+          -test.benchmem
+          -test.benchtime=1x
+          -test.count={{.COUNT}}"
+
+  # Node.js specific tasks
+  copy-js-cli:
+    desc: "Copy the Node.js client binary for Cloud Foundry deployment"
+    internal: true
+    cmds:
+      - cp crypto-broker-cli-js/bin/js-client-cli deployments/cloud-foundry/js/js-deployment/
+
+  ################# Kubernetes Deployment ####################
+
+
+  kube-up:
+    desc: "Deploy the Kubernetes Crypto Broker: load images into minikube, then deploy the chart"
+    vars:
+      TAG: '{{.TAG | default "dev"}}'
+    cmds:
+      - task: minikube-images
+        vars:
+          TAG: '{{.TAG}}'
+      - task: kube-deploy
+        vars:
+          TAG: '{{.TAG}}'
+          STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
+          STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
+          STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
+          FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
+
+  kube-down:
+    desc: "Destroys the Kubernetes Crypto Broker deployment"
+    cmds:
+      - helm uninstall crypto-broker -n crypto-broker
+
+  # Internal Kubernetes Deployment Tasks
+  minikube-images:
+    desc: "Load the docker images into minikube"
+    internal: true
+    vars:
+      TAG: '{{.TAG | default "dev"}}'
+    cmds:
+      - minikube image load
+          ghcr.io/open-crypto-broker/test_app_js:{{.TAG}}
+          ghcr.io/open-crypto-broker/test_app_go:{{.TAG}}
+          ghcr.io/open-crypto-broker/server:{{.TAG}}
+
+  kube-deploy:
+    desc: "Deploys the Kubernetes Crypto Broker"
+    internal: true
+    dir: deployments/k8s/kube-broker/
+    vars:
+      TAG: '{{.TAG | default "dev"}}'
+      STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
+      STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
+      STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
+      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
+    cmds:
+      - helm upgrade --install -f Chart.yaml -f values.yaml
+          --set imageTag="{{.TAG}}"
+          --set cliStressApp.enabled="{{.STRESS_ENABLED}}"
+          --set cliStressApp.concurrent="{{.STRESS_CONCURRENT}}"
+          --set cliStressApp.num="{{.STRESS_NUM}}"
+          --set-string server.godebug="{{.FIPS_GODEBUG_VALUE}}"
+          crypto-broker --namespace crypto-broker --create-namespace .
+
+  # Kubernetes Stress Test Tasks
+  kube-prepare-stress-test:
+    desc: "Build the Kubernetes stress-test image and load it into minikube"
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+      ARCH: '{{.ARCH | default "amd64"}}'
+      TAG: '{{.TAG | default "dev"}}'
+    cmds:
+      - task: build-cli
+        vars:
+          CLIENT: go
+          BRANCH: '{{.BRANCH}}'
+          OS: linux
+          ARCH: '{{.ARCH}}'
+      - docker build
+          -f deployments/k8s/kube-broker/build/stress-client.Dockerfile
+          -t ghcr.io/open-crypto-broker/stress_test:{{.TAG}} .
+      - minikube image load ghcr.io/open-crypto-broker/stress_test:{{.TAG}}
+
+  kube-run-stress-test:
+    desc: "Run the CLI-Go stress test in the deployed Kubernetes pod"
+    vars:
+      COUNT: '{{.COUNT | default "1"}}'
+    preconditions:
+      - sh: minikube status --format '{{`{{.Host}}`}}' | grep -q Running
+        msg: "minikube is not running — start it with 'minikube start'."
+      - sh: kubectl get deployment/crypto-broker-kube-broker -n crypto-broker
+        msg: "Deployment not found — run 'task kube STRESS_ENABLED=true' first."
+    cmds:
+      - kubectl exec deployment/crypto-broker-kube-broker
+          -n crypto-broker
+          -c stress-test
+          --
+          /app/stress-test
+          -test.run=^$
+          -test.bench=^BenchmarkStressHashConcurrentConnections$
+          -test.benchmem
+          -test.benchtime=1x
+          -test.count={{.COUNT}}
+
+  ################# Docker-Compose Deployment ####################
+  docker-jaeger-build:
+    desc: "Build Crypto Broker docker images with Jaeger. Optionally specify an image tag with TAG=...)"
+    dir: deployments/docker/jaeger/
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+      TAG: '{{.TAG | default "dev"}}'
+      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
+    deps:
+      - task: :build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+    cmds:
+      - FIPS_MODE_MODULE_VERSION={{.FIPS_MODE_MODULE_VERSION}} TAG={{.TAG}}
+          docker compose -f jaeger.yml
+          -f server.yml
+          -f test_app_js.yml
+          -f test_app_go.yml build
+
+  docker-jaeger-deploy:
+    desc: "Deploy or destroy Crypto Broker docker images with Jaeger. Optionally specify an image tag with TAG=...)"
+    dir: deployments/docker/jaeger/
+    requires:
+      vars:
+        - name: CMD
+          enum: [up, down]
+    vars:
+      TAG: '{{.TAG | default "dev"}}'
+      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
+    cmds:
+      - FIPS_GODEBUG_VALUE={{.FIPS_GODEBUG_VALUE}} TAG={{.TAG}}
+          docker compose -f jaeger.yml
+          -f server.yml
+          -f test_app_js.yml
+          -f test_app_go.yml {{.CMD}}
+
+  docker-grafana-build:
+    desc: "Build Crypto Broker docker images with Grafana and the LGTM stack. Optionally specify an image tag with TAG=...)"
+    dir: deployments/docker/lgtm/
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+      TAG: '{{.TAG | default "dev"}}'
+      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
+    deps:
+      - task: :build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+    cmds:
+      - FIPS_MODE_MODULE_VERSION={{.FIPS_MODE_MODULE_VERSION}} TAG={{.TAG}}
+          docker compose -f observability.yml
+          -f server.yml
+          -f test_app_js.yml
+          -f test_app_go.yml build
+
+  docker-grafana-deploy:
+    desc: "Deploy or destroy Crypto Broker docker images with Grafana and the LGTM stack. Optionally specify an image tag with TAG=...)"
+    dir: deployments/docker/lgtm/
+    requires:
+      vars:
+        - name: CMD
+          enum: [up, down]
+    vars:
+      TAG: '{{.TAG | default "dev"}}'
+      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
+    cmds:
+      - FIPS_GODEBUG_VALUE={{.FIPS_GODEBUG_VALUE}} TAG={{.TAG}}
+          docker compose -f observability.yml
+          -f server.yml
+          -f test_app_js.yml
+          -f test_app_go.yml {{.CMD}}

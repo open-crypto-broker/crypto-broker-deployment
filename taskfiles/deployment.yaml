@@ -215,7 +215,7 @@ tasks:
       ARCH: '{{.ARCH | default "amd64"}}'
       TAG: '{{.TAG | default "dev"}}'
     cmds:
-      - task: build-cli
+      - task: :build-cli
         vars:
           CLIENT: go
           BRANCH: '{{.BRANCH}}'

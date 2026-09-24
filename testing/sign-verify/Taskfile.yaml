@@ -1,0 +1,97 @@
+version: '3'
+
+vars:
+  # oqs-provider image: OpenSSL 3.x + liboqs + composite ML-DSA support
+  OQS_IMAGE: openquantumsafe/oqs-ossl3:latest
+  # All artifacts land here, mounted as /work in the container
+  OUT_DIR: '{{.TASKFILE_DIR}}/artifacts'
+  # Run openssl in the container as the current user so files aren't root-owned
+  DOCKER_RUN: docker run --rm --user "$(id -u):$(id -g)" -v "{{.OUT_DIR}}:/work" -w /work {{.OQS_IMAGE}}
+  # Load the PQ provider alongside the default one
+  PROV: -provider oqsprovider -provider default
+  # Algorithm selection
+  EC_CURVE: secp384r1
+  RSA_BITS: '3072'
+  MLDSA_ALG: mldsa65
+  COMPOSITE_ALG: p256_mldsa44
+
+tasks:
+  ################# Sign/Verify Data test material ####################
+  sign-test:
+    desc: "Pull image and generate all keys, payload and signatures for SignData/VerifyData tests"
+    deps: [sign-test:init, sign-test:pull]
+    cmds:
+      - task: sign-test:payload
+      - task: sign-test:keys
+      - task: sign-test:sign
+      - echo "Artifacts written to {{.OUT_DIR}}"
+
+  sign-test:init:
+    internal: true
+    cmds:
+      - mkdir -p {{.OUT_DIR}}
+
+  sign-test:pull:
+    desc: "Download the oqs-provider OpenSSL image"
+    cmds:
+      - docker pull {{.OQS_IMAGE}}
+
+  sign-test:payload:
+    desc: "Create the test payload"
+    deps: [sign-test:init]
+    cmds:
+      - echo "crypto-broker sign/verify test payload" > {{.OUT_DIR}}/test.txt
+
+  sign-test:keys:
+    desc: "Generate keys for legacy, post-quantum and hybrid modes"
+    deps: [sign-test:pull, sign-test:init]
+    cmds:
+      # --- Legacy: ECDSA ---
+      - '{{.DOCKER_RUN}} openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:{{.EC_CURVE}} -out ec-{{.EC_CURVE}}-priv.pem'
+      - '{{.DOCKER_RUN}} openssl pkey -in ec-{{.EC_CURVE}}-priv.pem -pubout -out ec-{{.EC_CURVE}}-pub.pem'
+      # --- Legacy: RSA (PSS) ---
+      - '{{.DOCKER_RUN}} openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:{{.RSA_BITS}} -out rsa-{{.RSA_BITS}}-priv.pem'
+      - '{{.DOCKER_RUN}} openssl pkey -in rsa-{{.RSA_BITS}}-priv.pem -pubout -out rsa-{{.RSA_BITS}}-pub.pem'
+      # --- Post-quantum ---
+      - '{{.DOCKER_RUN}} openssl genpkey {{.PROV}} -algorithm {{.MLDSA_ALG}} -out {{.MLDSA_ALG}}-priv.pem'
+      - '{{.DOCKER_RUN}} openssl pkey {{.PROV}} -in {{.MLDSA_ALG}}-priv.pem -pubout -out {{.MLDSA_ALG}}-pub.pem'
+      # --- Hybrid: composite key ---
+      - '{{.DOCKER_RUN}} openssl genpkey {{.PROV}} -algorithm {{.COMPOSITE_ALG}} -out composite-{{.COMPOSITE_ALG}}-priv.pem'
+      - '{{.DOCKER_RUN}} openssl pkey {{.PROV}} -in composite-{{.COMPOSITE_ALG}}-priv.pem -pubout -out composite-{{.COMPOSITE_ALG}}-pub.pem'
+
+  sign-test:sign:
+    desc: "Produce reference signatures for each mode"
+    deps: [sign-test:init, sign-test:keys, sign-test:payload]
+    cmds:
+      # --- Legacy: ECDSA (SHA-384) ---
+      - '{{.DOCKER_RUN}} openssl dgst -sha384 -sign ec-{{.EC_CURVE}}-priv.pem -out test.txt.ecdsa.sig test.txt'
+      # --- Legacy: RSA-PSS (SHA-256) ---
+      - '{{.DOCKER_RUN}} openssl dgst -sha256 -sigopt rsa_padding_mode:pss -sigopt rsa_pss_saltlen:digest -sign rsa-{{.RSA_BITS}}-priv.pem -out test.txt.rsa.sig test.txt'
+      # --- Post-quantum: ML-DSA (pure, -rawin) ---
+      - '{{.DOCKER_RUN}} openssl pkeyutl {{.PROV}} -sign -inkey {{.MLDSA_ALG}}-priv.pem -rawin -in test.txt -out test.txt.mldsa.sig'
+      # --- Hybrid: composite signature (single atomic sig) ---
+      - '{{.DOCKER_RUN}} openssl pkeyutl {{.PROV}} -sign -inkey composite-{{.COMPOSITE_ALG}}-priv.pem -rawin -in test.txt -out test.txt.hybrid.sig'
+
+  sign-test:verify:
+    desc: "Verify the reference signatures (self-check)"
+    deps: [sign-test:init]
+    cmds:
+      # --- Legacy: ECDSA (SHA-384) ---
+      - '{{.DOCKER_RUN}} openssl dgst -sha384 -verify ec-{{.EC_CURVE}}-pub.pem -signature test.txt.ecdsa.sig test.txt'
+      # --- Legacy: RSA-PSS (SHA-256) ---
+      - '{{.DOCKER_RUN}} openssl dgst -sha256 -sigopt rsa_padding_mode:pss -sigopt rsa_pss_saltlen:digest -verify rsa-{{.RSA_BITS}}-pub.pem -signature test.txt.rsa.sig test.txt'
+      # --- Post-quantum: ML-DSA ---
+      - '{{.DOCKER_RUN}} openssl pkeyutl {{.PROV}} -verify -pubin -inkey {{.MLDSA_ALG}}-pub.pem -rawin -in test.txt -sigfile test.txt.mldsa.sig'
+      # --- Hybrid: composite signature (single atomic sig) ---
+      - '{{.DOCKER_RUN}} openssl pkeyutl {{.PROV}} -verify -pubin -inkey composite-{{.COMPOSITE_ALG}}-pub.pem -rawin -in test.txt -sigfile test.txt.hybrid.sig'
+
+  sign-test:list-algs:
+    desc: "List signature algorithms exposed by oqs-provider (to pick composite variants)"
+    deps: [sign-test:init, sign-test:pull]
+    cmds:
+      - '{{.DOCKER_RUN}} openssl list -signature-algorithms -provider oqsprovider'
+
+  sign-test:clean:
+    desc: "Remove generated keys, payload and signatures"
+    cmds:
+      - rm -rf {{.OUT_DIR}}

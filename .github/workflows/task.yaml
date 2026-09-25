@@ -29,4 +29,4 @@ jobs:
           persist-credentials: false
 
       - name: Run end-to-end tests
-        run: task test-all
+        run: task test:all

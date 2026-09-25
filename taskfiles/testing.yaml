@@ -1,0 +1,647 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  COMMANDS: ["health", "hash-data", "encrypt-data", "sign-certificate"]
+  # Here are the Known-Answer-Tests for the following text (without quotes): "Welcome CryptoBroker"
+  KAT:
+    map: {
+      KAT_SHA256:
+        4a9f3b5a0ad21b75c5cd6ed018167ad9771ad2662756e26f0437c9c7a7cee27a,
+      KAT_SHA384:
+        b4bba0f7db27f690f11f795f969a539cbf1eee03282979ec1c341a73d66f2316bd180bf8bc1c1fe73cb7684e6073c079,
+      KAT_SHA512:
+        0d1d495b4dd049d07274d3e4b490dd24136315d4d8bfd83208b48213a0cd57cfa3b2ca3ab2f66cba900de28a5d4ddc4c56d116f518f2a12503c8a9bbe378577a,
+      KAT_SHA3_256:
+        dbb1a7578253838e60705e19f7f3efc384320515b1398ce7358c12307077c0fe,
+      KAT_SHA3_384:
+        dfeb2499281d6fd2bf5c6b85d20602d82303b66ad5b6464e68fe680ca67360c317a5c4514c3f5365c71cd557144397e6,
+      KAT_SHA3_512:
+        14894112f30f982c01e1de386ee9ca60bff70469d9fd249a5f9fbfc66a29c37c76b3fb15c294a6b6d3a1609fa59ca14194e2bc9da16610fa7f1a10dad38d628e,
+      }
+  # Plaintext used for the AES-GCM encrypt/decrypt Known-Answer-Tests (without quotes): "Welcome CryptoBroker"
+  ENC_PLAINTEXT: "Welcome CryptoBroker"
+  # AES-GCM KAT fixtures: maps each encryption profile to its fixture file in the
+  # testing folder. Each fixture holds the hex-encoded KEY, NONCE, AAD and the
+  # expected CIPHERTEXT and TAG for the plaintext above (caller-managed rawKey flow).
+  ENC_KAT:
+    map:
+      FIPS-140-3-128bit:
+        fixture: testing/encryption/aes-128-gcm.env
+      FIPS-140-3-192bit:
+        fixture: testing/encryption/aes-192-gcm.env
+      FIPS-140-3-256bit:
+        fixture: testing/encryption/aes-256-gcm.env
+  # Profiles, CSRs, and Issuer certificates for the SignCertificate tests in the Crypto Broker server
+  PROFILES: [
+    "Default",
+    "KSA-MODERATE-2020",
+    "KSA-ADVANCED-2020",
+    "FIPS-140-3-128bit",
+    "FIPS-140-3-192bit",
+    "FIPS-140-3-256bit"
+  ]
+  CSR: [
+    "csr-rsa-2048",
+    "csr-rsa-3072",
+    "csr-rsa-4096",
+    "csr-rsa-8192",
+    "csr-rsa-15380",
+    "csr-nist-secp224r1",
+    "csr-nist-secp256r1",
+    "csr-nist-secp384r1",
+    "csr-nist-secp521r1"
+  ]
+  ISSUER: [
+    "test-CA-rsa-3072",
+    "test-CA-nist-secp256r1",
+    "test-CA-nist-secp384r1",
+    "test-CA-nist-secp521r1"
+  ]
+  # Compatibility matrix file path
+  COMP_MATRIX: "testing/compatibility-matrix.md"
+
+tasks:
+  ################# End-to-End Tests ####################
+  # Public tasks for testing the different commands of all clients
+  client:
+    desc: "Build, run and perform tests for a specific CMD with all clients. The OS, ARCH, or BRANCH can be also specified. For sign command, use CREATE_COMP_MATRIX=true to generate a compatibility matrix."
+    requires:
+      vars:
+        - name: CMD
+          enum: ["health", "benchmark", "encrypt-data", "hash-data", "sign-certificate"]
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+      OS: '{{.OS}}'
+      ARCH: '{{.ARCH}}'
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX | default "false"}}'
+    cmds:
+      - task: create-env-files
+      - task: :build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+          OS: '{{.OS}}'
+          ARCH: '{{.ARCH}}'
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
+      - task: test-{{.CMD}}
+        vars:
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+
+  all:
+    desc: "Combine all tests for all clients in one task. The OS, ARCH, or BRANCH can be also specified for building the binaries."
+    vars:
+      BRANCH: '{{.BRANCH | default "main"}}'
+      OS: '{{.OS}}'
+      ARCH: '{{.ARCH}}'
+      COMMANDS:
+        ref: .COMMANDS
+    cmds:
+      - echo "[📋] Starting comprehensive test suite..."
+      - task: create-env-files
+      - task: :build-dependencies
+        vars:
+          BRANCH: '{{.BRANCH}}'
+          OS: '{{.OS}}'
+          ARCH: '{{.ARCH}}'
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
+      - for: { var: COMMANDS }
+        task: test-{{.ITEM}}
+
+  ################# Internal Tasks for End-to-End Tests ####################
+  # Start/Stop Crypto Broker server
+  start-crypto-broker-server:
+    desc: "Start the Crypto Broker Server with a custom test profile"
+    internal: true
+    dotenv: ['.env.server']
+    cmds:
+      - CRYPTO_BROKER_PROFILES_DIR=$PWD/testing/profiles ./crypto-broker-server/bin/cryptobroker-server &
+
+  stop-crypto-broker-server:
+    desc: "Stop the Crypto Broker Server after all tests were executed"
+    internal: true
+    silent: true
+    cmds:
+      - pkill -TERM -f cryptobroker-server || echo "[ℹ️] Server process not running"
+      - sleep 1
+      - pkill -KILL -f cryptobroker-server || true
+      - echo "[✅] Server stopped"
+
+  # Create .env files with console-only settings when they don't already exist (e.g. in CI).
+  create-env-files:
+    desc: "Create .env files with console-only settings for CI testing"
+    internal: true
+    status:
+      - test -f .env.server
+      - test -f .env.cli-go
+      - test -f .env.cli-js
+    cmds:
+      - |
+        cat > .env.server <<'EOL'
+        ENABLE_FIPS_MODE="false"
+        OTEL_SERVICE_NAME="crypto-broker-server"
+        OTEL_LOGS_EXPORTER="console"
+        OTEL_METRICS_EXPORTER="none"
+        OTEL_TRACES_EXPORTER="none"
+        EOL
+        echo "[✅] Created .env.server"
+      - |
+        cat > .env.cli-go <<'EOL'
+        OTEL_SERVICE_NAME="crypto-broker-cli-go"
+        OTEL_LOGS_EXPORTER="console"
+        OTEL_TRACES_EXPORTER="none"
+        EOL
+        echo "[✅] Created .env.cli-go"
+      - |
+        cat > .env.cli-js <<'EOL'
+        OTEL_SERVICE_NAME="crypto-broker-cli-js"
+        OTEL_LOGS_EXPORTER="console"
+        OTEL_TRACES_EXPORTER="none"
+        EOL
+        echo "[✅] Created .env.cli-js"
+
+  # Health check tests from the clients
+  test-health:
+    desc: "Requests the server status using each CLI's health command"
+    internal: true
+    silent: true
+    vars:
+      ref: .CLIENTS
+    cmds:
+      - for: { var: CLIENTS }
+        cmd:
+          |
+          set -e
+          echo "[INFO] Health check with {{.KEY | upper}} client"
+
+          set -a
+          source {{.ITEM.env}}
+          set +a
+
+          RESPONSE=$({{.ITEM.cmd}} health)
+          if echo "$RESPONSE" | {{.GREP_CMD}} -E '("status"||"Status"):\s?("SERVING"||"1")' ; then
+            echo "[✅] Crypto Broker server is healthy"
+          else
+            echo "[❌] Crypto Broker server is not healthy"
+            exit 1
+          fi
+
+  # Benchmark tests from the clients
+  test-benchmark:
+    desc: "Requests the benchmark command using each CLI's benchmark command"
+    internal: true
+    silent: true
+    vars:
+      ref: .CLIENTS
+    cmds:
+      - for: { var: CLIENTS }
+        cmd:
+          |
+          set -e
+          echo "[INFO] Benchmark test with {{.KEY | upper}} client"
+
+          set -a
+          source {{.ITEM.env}}
+          set +a
+
+          RESPONSE=$({{.ITEM.cmd}} benchmark)
+          if [ $? -ne 0 ]; then
+            echo "[❌] Benchmark command failed"
+            exit 1
+          else
+            echo "$RESPONSE"
+            echo "[✅] Benchmark command successful"
+          fi
+
+  # Hashing tests from the clients
+  test-hash-data:
+    desc: "Iterate hashing tests over all clients"
+    internal: true
+    vars:
+      CLIENTS:
+        ref: .CLIENTS
+    cmds:
+      - for: { var: CLIENTS }
+        task: hash-data-KATs
+        vars:
+          CLIENT: '{{.KEY}}'
+          CLIENT_PATH: '{{.ITEM.cmd}}'
+          CLIENT_ENV: '{{.ITEM.env}}'
+
+  hash-data-KATs:
+    desc: "Iterate over all hash-data KATs"
+    internal: true
+    silent: true
+    vars:
+      KAT:
+        ref: .KAT
+    cmds:
+      - for: { var: KAT }
+        cmd:
+          |
+          set -e
+          echo "[INFO] Test {{.KEY}} with {{.CLIENT | upper}} client"
+
+          set -a
+          source {{.CLIENT_ENV}}
+          set +a
+
+          RESPONSE=$({{.CLIENT_PATH}} hash-data --profile={{.KEY}} "Welcome CryptoBroker")
+          ACTUAL_HASH=$(echo "$RESPONSE" | {{.GREP_CMD}} -oP '"[hH]ashValueHex":\s?"\K[^"]+')
+          if [[ $ACTUAL_HASH != {{.ITEM}} ]]; then
+            echo "[❌] Hash values do not match!"
+            exit 1
+          fi
+          echo "[✅] Hash value matches expected KAT"
+
+          # Descriptor is nested under .response for go-cli and top-level for js-cli.
+          DESCRIPTOR=$(echo "$RESPONSE" | jq -Rr 'fromjson? | (.descriptor // .response.descriptor) | select(. != null) | "\(.profile)|\(.operation)|\(.algorithm)"')
+          case {{.KEY}} in
+            KAT_SHA256) EXPECTED_ALG="sha-256";;
+            KAT_SHA384) EXPECTED_ALG="sha-384";;
+            KAT_SHA512) EXPECTED_ALG="sha-512";;
+            KAT_SHA3_256) EXPECTED_ALG="sha3-256";;
+            KAT_SHA3_384) EXPECTED_ALG="sha3-384";;
+            KAT_SHA3_512) EXPECTED_ALG="sha3-512";;
+          esac
+          if [[ "$DESCRIPTOR" != "{{.KEY}}|HashData|$EXPECTED_ALG" ]]; then
+            echo "[❌] Descriptor mismatch! Got '$DESCRIPTOR', expected '{{.KEY}}|HashData|$EXPECTED_ALG'"
+            exit 1
+          fi
+          echo "[✅] Descriptor matches (profile={{.KEY}}, operation=HashData, algorithm=$EXPECTED_ALG)"
+
+  # AES-GCM encrypt/decrypt tests from the clients
+  test-encrypt-data:
+    desc: "Iterate AES-GCM encrypt/decrypt round-trip tests over all clients"
+    internal: true
+    vars:
+      CLIENTS:
+        ref: .CLIENTS
+    cmds:
+      - for: { var: CLIENTS }
+        task: encrypt-data-KATs
+        vars:
+          CLIENT: '{{.KEY}}'
+          CLIENT_PATH: '{{.ITEM.cmd}}'
+          CLIENT_ENV: '{{.ITEM.env}}'
+
+  encrypt-data-KATs:
+    desc: "Iterate over all AES-GCM KATs: encrypt (assert ciphertext/tag) then decrypt (assert round-trip)"
+    internal: true
+    silent: true
+    vars:
+      ENC_KAT:
+        ref: .ENC_KAT
+    cmds:
+      - for: { var: ENC_KAT }
+        cmd:
+          |
+          set -e
+          echo "[INFO] Test AES-GCM with profile {{.KEY}} and {{.CLIENT | upper}} client"
+
+          set -a
+          source {{.CLIENT_ENV}}
+          source {{.ITEM.fixture}}
+          set +a
+
+          # Preserve the expected known-answer values before invoking the client
+          EXPECTED_CIPHERTEXT="$CIPHERTEXT"
+          EXPECTED_TAG="$TAG"
+
+          # Clients differ in output shape: go-cli logs hex strings, js-cli logs
+          # protobuf Buffer byte-arrays. Normalize both to hex (bytes) / utf-8 (text).
+          HEX_DEF='def tohex: "0123456789abcdef" as $h | reduce .[] as $b (""; . + $h[($b/16|floor):($b/16|floor)+1] + $h[($b%16):($b%16)+1]);'
+
+          # --- Encrypt: assert ciphertext and tag match the known-answer test ---
+          ENC_RESPONSE=$({{.CLIENT_PATH}} encrypt-data \
+            --profile={{.KEY}} \
+            --keyRaw="$KEY" \
+            --nonce="$NONCE" \
+            --aad="$AAD" \
+            "{{.ENC_PLAINTEXT}}")
+          ACTUAL_CIPHERTEXT=$(echo "$ENC_RESPONSE" | jq -Rr "$HEX_DEF"' fromjson? | select(.ciphertext != null) | .ciphertext | if type == "string" then . else (.data | tohex) end')
+          ACTUAL_TAG=$(echo "$ENC_RESPONSE" | jq -Rr "$HEX_DEF"' fromjson? | (.tag // .cipherMetadata.tag) as $t | select($t != null) | $t | if type == "string" then . else (.data | tohex) end')
+
+          if [[ "$ACTUAL_CIPHERTEXT" != "$EXPECTED_CIPHERTEXT" ]]; then
+            echo "[❌] Ciphertext does not match expected KAT!"
+            exit 1
+          fi
+          if [[ "$ACTUAL_TAG" != "$EXPECTED_TAG" ]]; then
+            echo "[❌] Authentication tag does not match expected KAT!"
+            exit 1
+          fi
+          echo "[✅] Ciphertext and tag match expected KAT"
+
+          # Descriptor is nested under .response for go-cli and top-level for js-cli.
+          DESCRIPTOR=$(echo "$ENC_RESPONSE" | jq -Rr 'fromjson? | (.descriptor // .response.descriptor) | select(. != null) | "\(.profile)|\(.operation)|\(.algorithm)"')
+          # case {{.KEY}} in
+          #   FIPS-140-3-128bit) EXPECTED_ALG="aes-128-gcm";;
+          #   FIPS-140-3-192bit) EXPECTED_ALG="aes-192-gcm";;
+          #   FIPS-140-3-256bit) EXPECTED_ALG="aes-256-gcm";;
+          # esac
+          if [[ "$DESCRIPTOR" != "{{.KEY}}|EncryptData|aes-gcm" ]]; then
+            echo "[❌] EncryptData descriptor mismatch! Got '$DESCRIPTOR', expected '{{.KEY}}|EncryptData|aes-gcm'"
+            exit 1
+          fi
+          echo "[✅] EncryptData descriptor matches (profile={{.KEY}}, operation=EncryptData, algorithm=aes-gcm)"
+
+          # --- Decrypt: assert the plaintext round-trips ---
+          DEC_RESPONSE=$({{.CLIENT_PATH}} decrypt-data \
+            --profile={{.KEY}} \
+            --keyRaw="$KEY" \
+            --nonce="$NONCE" \
+            --aad="$AAD" \
+            --tag="$EXPECTED_TAG" \
+            "$EXPECTED_CIPHERTEXT")
+          ACTUAL_PLAINTEXT=$(echo "$DEC_RESPONSE" | jq -Rr 'fromjson? | select(.plaintext != null) | .plaintext | if type == "string" then . else (.data | implode) end')
+          if [[ "$ACTUAL_PLAINTEXT" != "{{.ENC_PLAINTEXT}}" ]]; then
+            echo "[❌] Decrypted plaintext does not match original!"
+            exit 1
+          fi
+          echo "[✅] Decrypted plaintext matches original"
+
+  # Public test for the SignCertificate descriptor
+  sign-certificate-descriptor:
+    desc: "Test the SignCertificate descriptor"
+    silent: true
+    vars:
+      CLIENTS:
+        ref: .CLIENTS
+    cmds:
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
+      - for: { var: CLIENTS }
+        task: sign-certificate-descriptor-internal
+        vars:
+          CLIENT: '{{.KEY}}'
+          CLIENT_PATH: '{{.ITEM.cmd}}'
+          CLIENT_ENV: '{{.ITEM.env}}'
+
+  sign-certificate-descriptor-internal:
+    desc: "Validate the SignCertificate descriptor on a known-good combination"
+    internal: true
+    silent: true
+    cmds:
+      - |
+        set -e
+        TEST_CA_DIR=testing/certificates/test-ca
+        TEST_CSR_DIR=testing/certificates/test-csr
+
+        set -a
+        source {{.CLIENT_ENV}}
+        set +a
+
+        RESPONSE=$({{.CLIENT_PATH}} \
+          sign-certificate \
+          --profile=Default \
+          --csr=$TEST_CSR_DIR/csr-nist-secp384r1.csr \
+          --caCert=$TEST_CA_DIR/cert-test-CA-nist-secp521r1.pem \
+          --caKey=$TEST_CA_DIR/test-CA-nist-secp521r1.pem \
+          2>&1)
+
+        # Descriptor is nested under .response for go-cli and top-level for js-cli.
+        DESCRIPTOR=$(echo "$RESPONSE" | jq -Rr 'fromjson? | (.descriptor // .response.descriptor) | select(. != null) | "\(.profile)|\(.operation)|\(.algorithm)"')
+        if [[ "$DESCRIPTOR" != "Default|SignCertificate|ecdsa-with-SHA512" ]]; then
+          echo "[❌] SignCertificate descriptor mismatch! Got '$DESCRIPTOR', expected 'Default|SignCertificate|ecdsa-with-SHA512'"
+          exit 1
+        fi
+        echo "[✅] SignCertificate descriptor matches (profile=Default, operation=SignCertificate, algorithm=ecdsa-with-SHA512)"
+
+  # Sign certificate tests from the clients
+  test-sign-certificate:
+    desc: "Iterate signing tests over all clients"
+    internal: true
+    silent: true
+    vars:
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+      CLIENTS:
+        ref: .CLIENTS
+    cmds:
+        # Delete previous compatibility matrix
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        rm -f {{.COMP_MATRIX}}
+        {{end}}
+      # Create header for compatibility matrix
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "# Clients Compatibility Matrix\n\n" >> {{.COMP_MATRIX}}
+        printf "This compatibility matrix shows which client supports which profile and which CSR when signing certificates with different CA issuers.\n\n" >> {{.COMP_MATRIX}}
+        printf "Legend: ✅ - Supported by profile, ❌ - Not supported by profile\n\n" >> {{.COMP_MATRIX}}
+        {{end}}
+      - for: { var: CLIENTS }
+        task: sign-iterate-profiles
+        vars:
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+          CLIENT: '{{.KEY}}'
+          CLIENT_PATH: '{{.ITEM.cmd}}'
+          CLIENT_ENV: '{{.ITEM.env}}'
+      # Remove duplicate newline at EOF (otherwise Markdownlint will complain)
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        truncate -s -1 {{.COMP_MATRIX}}
+        echo "[✅] Compatibility matrix created at {{.COMP_MATRIX}}"
+        {{end}}
+
+  sign-iterate-profiles:
+    desc: "Iterate over each profile"
+    internal: true
+    silent: true
+    vars:
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+      PROFILES:
+        ref: .PROFILES
+    cmds:
+      # Add header for each client
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "## {{.CLIENT | title}} Client\n\n" >> {{.COMP_MATRIX}}
+        {{else}}
+        printf "\n[INFO] Testing client: {{.CLIENT | title}}\n"
+        {{end}}
+      - for: { var: PROFILES }
+        task: sign-iterate-issuer
+        vars:
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+          CLIENT_PATH: '{{.CLIENT_PATH}}'
+          CLIENT_ENV: '{{.CLIENT_ENV}}'
+          PROFILE: '{{.ITEM}}'
+
+  sign-iterate-issuer:
+    desc: "Iterate over each CA-issuer certificate and key"
+    internal: true
+    silent: true
+    vars:
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+      CSR:
+        ref: .CSR
+      ISSUER:
+        ref: .ISSUER
+    cmds:
+      - task: comp-matrix-create-header-row
+        vars:
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+          CSR:
+            ref: .CSR
+          PROFILE: '{{.PROFILE}}'
+      ### Fill the table
+      # Iterate for each issuer CA and key over each CSR
+      - for: { var: ISSUER }
+        task: sign-iterate-csr
+        vars:
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+          CLIENT_PATH: '{{.CLIENT_PATH}}'
+          CLIENT_ENV: '{{.CLIENT_ENV}}'
+          PROFILE: '{{.PROFILE}}'
+          ISSUER: '{{.ITEM}}'
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "\n" >> {{.COMP_MATRIX}}
+        {{end}}
+
+  comp-matrix-create-header-row:
+    desc: "Create header rows for the compatibility matrix"
+    internal: true
+    silent: true
+    vars:
+      PROFILE: '{{.PROFILE}}'
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+      CSR:
+        ref: .CSR
+    cmds:
+      ### Add header for each profile
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "### Profile \"{{.PROFILE}}\"\n\n" >> {{.COMP_MATRIX}}
+        {{end}}
+      ### Header row generation
+      # First cell of header row
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "| Issuer↓ \ CSR➔ |" >> {{.COMP_MATRIX}}
+        {{end}}
+      # Create the rest of the header row for the compatibility matrix
+      - for: { var: CSR }
+        cmd:
+          |
+          {{if eq .CREATE_COMP_MATRIX "true"}}
+          printf " {{.ITEM | upper}} |" >> {{.COMP_MATRIX}}
+          {{end}}
+      # Add newline at end of header row
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "\n" >> {{.COMP_MATRIX}}
+        {{end}}
+      ### Markdown specific second row
+      # First cell of the second row
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "| --- |" >> {{.COMP_MATRIX}}
+        {{end}}
+      # Create the rest of the second row with center alignment
+      - for: { var: CSR }
+        cmd: |
+          {{if eq .CREATE_COMP_MATRIX "true"}}
+          printf " :---: |" >> {{.COMP_MATRIX}}
+          {{end}}
+      # Add newline at end of second row
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "\n" >> {{.COMP_MATRIX}}
+        {{end}}
+
+  sign-iterate-csr:
+    desc: "Iterate over each CSR"
+    internal: true
+    silent: true
+    ignore_error: true
+    vars:
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+      CSR:
+        ref: .CSR
+    cmds:
+      # First cell in each row: Issuer key size
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "| {{.ISSUER | upper}} |" >> {{.COMP_MATRIX}}
+        {{end}}
+      - for: { var: CSR }
+        cmd: |
+          set +e
+          TEST_CA_DIR=testing/certificates/test-ca
+          TEST_CSR_DIR=testing/certificates/test-csr
+
+          set -a
+          source {{.CLIENT_ENV}}
+          set +a
+
+          {{if ne .CREATE_COMP_MATRIX "true"}}
+          echo -e "Profile: {{.PROFILE}}\nCSR: {{.ITEM}}\nIssuer: {{.ISSUER}}"
+          {{end}}
+          RESPONSE=$({{.CLIENT_PATH}} \
+            sign-certificate \
+            --profile={{.PROFILE}} \
+            --csr=$TEST_CSR_DIR/{{.ITEM}}.csr \
+            --caCert=$TEST_CA_DIR/cert-{{.ISSUER}}.pem \
+            --caKey=$TEST_CA_DIR/{{.ISSUER}}.pem \
+            2>&1)
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            {{if eq .CREATE_COMP_MATRIX "true"}}
+            printf " ❌ |" >> {{.COMP_MATRIX}}
+            {{else}}
+            echo -e "❌ Command failed\n"
+            {{end}}
+          elif echo "$RESPONSE" | {{.GREP_CMD}} -E 'BEGIN CERTIFICATE'; then
+            {{if eq .CREATE_COMP_MATRIX "true"}}
+            printf " ✅ |" >> {{.COMP_MATRIX}}
+            {{else}}
+            echo -e "✅ Supported by profile\n"
+            {{end}}
+          else
+            {{if eq .CREATE_COMP_MATRIX "true"}}
+            printf " ❌ |" >> {{.COMP_MATRIX}}
+            {{else}}
+            echo -e "❌ Not supported by profile\n"
+            {{end}}
+          fi
+          set -e
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "\n" >> {{.COMP_MATRIX}}
+        {{end}}
+
+  # Test custom subject feature
+  sign-certificate-custom-subject:
+    desc: "Iterate signing tests over all clients with a custom subject"
+    vars:
+      ref: .CLIENTS
+    cmds:
+      - for: { var: CLIENTS }
+        task: sign-certificate-custom-subject-internal
+        vars:
+          CLIENT: '{{.KEY}}'
+          CLIENT_PATH: '{{.ITEM.cmd}}'
+          CLIENT_ENV: '{{.ITEM.env}}'
+
+  sign-certificate-custom-subject-internal:
+    desc: "Test custom subject with CLI API"
+    internal: true
+    cmds:
+      - |
+        echo "Test custom subject with CLI API for {{.CLIENT | upper}} client"
+        TMP_DIR=tmp/certificate-responses/subject
+        TEST_CA_DIR=testing/certificates/test-ca
+        TEST_CSR_DIR=testing/certificates/test-csr
+        rm -rf $TMP_DIR
+        mkdir -p $TMP_DIR
+
+        set -a
+        source {{.CLIENT_ENV}}
+        set +a
+
+        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} sign-certificate --profile=Default --csr=$TEST_CSR_DIR/csr-nist-secp384r1.csr --caCert=$TEST_CA_DIR/cert-test-CA-nist-secp521r1.pem --caKey=$TEST_CA_DIR/test-CA-nist-secp521r1.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | {{.GREP_CMD}} 'BEGIN CERTIFICATE' | jq -r '.pem // .response.SignedCertificate.Pem // empty')
+        echo "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-custom-subject.pem
+        openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-custom-subject.pem -text

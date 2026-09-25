@@ -267,7 +267,7 @@ tasks:
             KAT_SHA3_512) EXPECTED_ALG="sha3-512";;
           esac
           if [[ "$DESCRIPTOR" != "{{.KEY}}|HashData|$EXPECTED_ALG" ]]; then
-            echo "[❌] Descriptor mismatch! got '$DESCRIPTOR', expected '{{.KEY}}|HashData|$EXPECTED_ALG'"
+            echo "[❌] Descriptor mismatch! Got '$DESCRIPTOR', expected '{{.KEY}}|HashData|$EXPECTED_ALG'"
             exit 1
           fi
           echo "[✅] Descriptor matches (profile={{.KEY}}, operation=HashData, algorithm=$EXPECTED_ALG)"
@@ -334,6 +334,19 @@ tasks:
           fi
           echo "[✅] Ciphertext and tag match expected KAT"
 
+          # Descriptor is nested under .response for go-cli and top-level for js-cli.
+          DESCRIPTOR=$(echo "$ENC_RESPONSE" | jq -Rr 'fromjson? | (.descriptor // .response.descriptor) | select(. != null) | "\(.profile)|\(.operation)|\(.algorithm)"')
+          # case {{.KEY}} in
+          #   FIPS-140-3-128bit) EXPECTED_ALG="aes-128-gcm";;
+          #   FIPS-140-3-192bit) EXPECTED_ALG="aes-192-gcm";;
+          #   FIPS-140-3-256bit) EXPECTED_ALG="aes-256-gcm";;
+          # esac
+          if [[ "$DESCRIPTOR" != "{{.KEY}}|EncryptData|aes-gcm" ]]; then
+            echo "[❌] EncryptData descriptor mismatch! Got '$DESCRIPTOR', expected '{{.KEY}}|EncryptData|aes-gcm'"
+            exit 1
+          fi
+          echo "[✅] EncryptData descriptor matches (profile={{.KEY}}, operation=EncryptData, algorithm=aes-gcm)"
+
           # --- Decrypt: assert the plaintext round-trips ---
           DEC_RESPONSE=$({{.CLIENT_PATH}} decrypt-data \
             --profile={{.KEY}} \
@@ -349,50 +362,24 @@ tasks:
           fi
           echo "[✅] Decrypted plaintext matches original"
 
-  # Sign certificate tests from the clients
-  test-sign-certificate:
-    desc: "Iterate signing tests over all clients"
-    internal: true
+  # Public test for the SignCertificate descriptor
+  sign-certificate-descriptor:
+    desc: "Test the SignCertificate descriptor"
     silent: true
     vars:
-      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
       CLIENTS:
         ref: .CLIENTS
     cmds:
-        # Delete previous compatibility matrix
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        rm -f {{.COMP_MATRIX}}
-        {{end}}
-      # Create header for compatibility matrix
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "# Clients Compatibility Matrix\n\n" >> {{.COMP_MATRIX}}
-        printf "This compatibility matrix shows which client supports which profile and which CSR when signing certificates with different CA issuers.\n\n" >> {{.COMP_MATRIX}}
-        printf "Legend: ✅ - Supported by profile, ❌ - Not supported by profile\n\n" >> {{.COMP_MATRIX}}
-        {{end}}
-      # Validate the SignCertificate descriptor on a known-good combination per client
+      - task: start-crypto-broker-server
+      - defer: { task: stop-crypto-broker-server }
       - for: { var: CLIENTS }
-        task: sign-descriptor
+        task: sign-certificate-descriptor-internal
         vars:
           CLIENT: '{{.KEY}}'
           CLIENT_PATH: '{{.ITEM.cmd}}'
           CLIENT_ENV: '{{.ITEM.env}}'
-      - for: { var: CLIENTS }
-        task: sign-iterate-profiles
-        vars:
-          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-          CLIENT: '{{.KEY}}'
-          CLIENT_PATH: '{{.ITEM.cmd}}'
-          CLIENT_ENV: '{{.ITEM.env}}'
-      # Remove duplicate newline at EOF (otherwise Markdownlint will complain)
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        truncate -s -1 {{.COMP_MATRIX}}
-        echo "[✅] Compatibility matrix created at {{.COMP_MATRIX}}"
-        {{end}}
 
-  sign-descriptor:
+  sign-certificate-descriptor-internal:
     desc: "Validate the SignCertificate descriptor on a known-good combination"
     internal: true
     silent: true
@@ -417,10 +404,46 @@ tasks:
         # Descriptor is nested under .response for go-cli and top-level for js-cli.
         DESCRIPTOR=$(echo "$RESPONSE" | jq -Rr 'fromjson? | (.descriptor // .response.descriptor) | select(. != null) | "\(.profile)|\(.operation)|\(.algorithm)"')
         if [[ "$DESCRIPTOR" != "Default|SignCertificate|ecdsa-with-SHA512" ]]; then
-          echo "[❌] SignCertificate descriptor mismatch! got '$DESCRIPTOR', expected 'Default|SignCertificate|ecdsa-with-SHA512'"
+          echo "[❌] SignCertificate descriptor mismatch! Got '$DESCRIPTOR', expected 'Default|SignCertificate|ecdsa-with-SHA512'"
           exit 1
         fi
         echo "[✅] SignCertificate descriptor matches (profile=Default, operation=SignCertificate, algorithm=ecdsa-with-SHA512)"
+
+  # Sign certificate tests from the clients
+  test-sign-certificate:
+    desc: "Iterate signing tests over all clients"
+    internal: true
+    silent: true
+    vars:
+      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+      CLIENTS:
+        ref: .CLIENTS
+    cmds:
+        # Delete previous compatibility matrix
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        rm -f {{.COMP_MATRIX}}
+        {{end}}
+      # Create header for compatibility matrix
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        printf "# Clients Compatibility Matrix\n\n" >> {{.COMP_MATRIX}}
+        printf "This compatibility matrix shows which client supports which profile and which CSR when signing certificates with different CA issuers.\n\n" >> {{.COMP_MATRIX}}
+        printf "Legend: ✅ - Supported by profile, ❌ - Not supported by profile\n\n" >> {{.COMP_MATRIX}}
+        {{end}}
+      - for: { var: CLIENTS }
+        task: sign-iterate-profiles
+        vars:
+          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
+          CLIENT: '{{.KEY}}'
+          CLIENT_PATH: '{{.ITEM.cmd}}'
+          CLIENT_ENV: '{{.ITEM.env}}'
+      # Remove duplicate newline at EOF (otherwise Markdownlint will complain)
+      - |
+        {{if eq .CREATE_COMP_MATRIX "true"}}
+        truncate -s -1 {{.COMP_MATRIX}}
+        echo "[✅] Compatibility matrix created at {{.COMP_MATRIX}}"
+        {{end}}
 
   sign-iterate-profiles:
     desc: "Iterate over each profile"

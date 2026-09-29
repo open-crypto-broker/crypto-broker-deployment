@@ -17,32 +17,32 @@ vars:
 
 tasks:
   ################# Sign/Verify Data test material ####################
-  sign-test:
+  sign-data-test:
     desc: "Pull image and generate all keys, payload and signatures for SignData/VerifyData tests"
-    deps: [sign-test:init, sign-test:pull]
+    deps: [sign-data-test:init, sign-data-test:pull]
     cmds:
-      - task: sign-test:payload
-      - task: sign-test:keys
-      - task: sign-test:sign
+      - task: sign-data-test:payload
+      - task: sign-data-test:keys
+      - task: sign-data-test:sign
       - echo "Artifacts written to {{.OUT_DIR}}"
 
-  sign-test:init:
+  sign-data-test:init:
     internal: true
     cmds:
       - mkdir -p {{.OUT_DIR}}
 
-  sign-test:pull:
+  sign-data-test:pull:
     desc: "Download the oqs-provider OpenSSL image"
     cmds:
       - docker pull {{.OQS_IMAGE}}
 
-  sign-test:payload:
+  sign-data-test:payload:
     desc: "Create the test payload"
     deps: [sign-test:init]
     cmds:
       - echo "crypto-broker sign/verify test payload" > {{.OUT_DIR}}/test.txt
 
-  sign-test:keys:
+  sign-data-test:keys:
     desc: "Generate keys for legacy, post-quantum and hybrid modes"
     deps: [sign-test:pull, sign-test:init]
     cmds:
@@ -59,9 +59,9 @@ tasks:
       - '{{.DOCKER_RUN}} openssl genpkey {{.PROV}} -algorithm {{.COMPOSITE_ALG}} -out composite-{{.COMPOSITE_ALG}}-priv.pem'
       - '{{.DOCKER_RUN}} openssl pkey {{.PROV}} -in composite-{{.COMPOSITE_ALG}}-priv.pem -pubout -out composite-{{.COMPOSITE_ALG}}-pub.pem'
 
-  sign-test:sign:
+  sign-data-test:sign:
     desc: "Produce reference signatures for each mode"
-    deps: [sign-test:init, sign-test:keys, sign-test:payload]
+    deps: [sign-data-test:init, sign-data-test:keys, sign-data-test:payload]
     cmds:
       # --- Legacy: ECDSA (SHA-384) ---
       - '{{.DOCKER_RUN}} openssl dgst -sha384 -sign ec-{{.EC_CURVE}}-priv.pem -out test.txt.ecdsa.sig test.txt'
@@ -72,9 +72,9 @@ tasks:
       # --- Hybrid: composite signature (single atomic sig) ---
       - '{{.DOCKER_RUN}} openssl pkeyutl {{.PROV}} -sign -inkey composite-{{.COMPOSITE_ALG}}-priv.pem -rawin -in test.txt -out test.txt.hybrid.sig'
 
-  sign-test:verify:
+  sign-data-test:verify:
     desc: "Verify the reference signatures (self-check)"
-    deps: [sign-test:init]
+    deps: [sign-data-test:init]
     cmds:
       # --- Legacy: ECDSA (SHA-384) ---
       - '{{.DOCKER_RUN}} openssl dgst -sha384 -verify ec-{{.EC_CURVE}}-pub.pem -signature test.txt.ecdsa.sig test.txt'
@@ -85,13 +85,13 @@ tasks:
       # --- Hybrid: composite signature (single atomic sig) ---
       - '{{.DOCKER_RUN}} openssl pkeyutl {{.PROV}} -verify -pubin -inkey composite-{{.COMPOSITE_ALG}}-pub.pem -rawin -in test.txt -sigfile test.txt.hybrid.sig'
 
-  sign-test:list-algs:
+  sign-data-test:list-algs:
     desc: "List signature algorithms exposed by oqs-provider (to pick composite variants)"
-    deps: [sign-test:init, sign-test:pull]
+    deps: [sign-data-test:init, sign-data-test:pull]
     cmds:
       - '{{.DOCKER_RUN}} openssl list -signature-algorithms -provider oqsprovider'
 
-  sign-test:clean:
+  sign-data-test:clean:
     desc: "Remove generated keys, payload and signatures"
     cmds:
       - rm -rf {{.OUT_DIR}}

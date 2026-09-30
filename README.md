@@ -46,9 +46,9 @@ For simplicity, in the example manifests both binary and profile are located in 
 To deploy the Crypto Broker Server, a test app, and the OpenTelemetry Collector (otel-collector) to Cloud Foundry, use the following task. Make sure you are logged in to your Cloud Foundry instance first:
 
 ```bash
-task cf-deploy CLIENT=go
+task deploy:cf-push CLIENT=go
 # or
-task cf-deploy CLIENT=js
+task deploy:cf-push CLIENT=js
 ```
 
 This will automatically copy the required binaries, profiles, certificates, and the otel-collector (with its configuration) into the deployment folder before pushing to Cloud Foundry.
@@ -56,9 +56,9 @@ This will automatically copy the required binaries, profiles, certificates, and 
 To delete the deployment from Cloud Foundry, use:
 
 ```bash
-task cf-delete CLIENT=go
+task deploy:cf-delete CLIENT=go
 # or
-task cf-delete CLIENT=js
+task deploy:cf-delete CLIENT=js
 ```
 
 ### Kubernetes
@@ -75,12 +75,9 @@ Make sure that minikube is up and running (e.g. issue `minikube start`).
 For deployment, simply run the following command (or equivalent directly from Taskfile):
 
 ```shell
-task minikube-images
-# if kube-deploy does not work, make sure that minikube is started
-task kube-deploy
+# make sure that minikube is started
+task deploy:kube-up
 ```
-
-> Tip: `task kube-up` runs `minikube-images` and `kube-deploy` in one step.
 
 This will deploy the Helm chart `kube-broker` in the `crypto-broker` namespace in your local kubernetes cluster.
 The cluster will spin up a server which listens on the Unix Socket and two CLI test apps that will send periodically requests (hash and sign) to the server.
@@ -92,7 +89,7 @@ Feel free to check the [Kubernetes Readme](deployments/k8s/kube-broker/README.md
 To uninstall the Helm deployment run:
 
 ```shell
-task kube-down
+task deploy:kube-down
 ```
 
 ### Stress Testing
@@ -103,17 +100,16 @@ connect to the broker through a local Unix socket.
 For Cloud Foundry:
 
 ```shell
-task cf-deploy CLIENT=go
-task cf-stress-test CONCURRENT=100 NUM=100
+task deploy:cf-push CLIENT=go
+task deploy:cf-stress-test CONCURRENT=100 NUM=100
 ```
 
 For Kubernetes:
 
 ```shell
-task minikube-images TAG=v0.4.1
-task kube-prepare-stress-test BRANCH=v0.4.1 TAG=v0.4.1
-task kube-deploy TAG=v0.4.1 STRESS_ENABLED=true STRESS_CONCURRENT=100 STRESS_NUM=100
-task kube-run-stress-test
+task deploy:kube-prepare-stress-test TAG=v0.5.0
+task deploy:kube-up TAG=v0.5.0 STRESS_ENABLED=true STRESS_CONCURRENT=100 STRESS_NUM=100
+task deploy:kube-run-stress-test
 ```
 
 ### Docker Compose with Observability — Jaeger and Grafana
@@ -124,22 +120,22 @@ Start Jaeger via Taskfile:
 
 ```bash
 # Build images for Jaeger (if needed):
-task docker-jaeger-build
+task deploy:docker-jaeger-build
 # Start Jaeger:
-task docker-jaeger-deploy CMD=up
+task deploy:docker-jaeger-deploy CMD=up
 # Stop Jaeger:
-task docker-jaeger-deploy CMD=down
+task deploy:docker-jaeger-deploy CMD=down
 ```
 
 Start Grafana (LGTM) via Taskfile:
 
 ```bash
 # Build Grafana images (optional):
-task docker-grafana-build
+task deploy:docker-grafana-build
 # Start Grafana:
-task docker-grafana-deploy CMD=up
+task deploy:docker-grafana-deploy CMD=up
 # Stop Grafana:
-task docker-grafana-deploy CMD=down
+task deploy:docker-grafana-deploy CMD=down
 ```
 
 Quick notes:
@@ -158,15 +154,15 @@ With these tests the complete message flow is visible from start to end.
 A unified test command can be used to run specific E2E tests:
 
 ```bash
-task test CMD=<command>
+task test:client CMD=<command>
 ```
 
-Where `<command>` can be one of: `health`, `benchmark`, `hash`, or `sign`.
+Where `<command>` can be one of: `health`, `benchmark`, `hash-data`, `encrypt-data`, or `sign-certificate`.
 
 The following command performs all E2E tests with all combinations of clients and the server:
 
 ```bash
-task test-all
+task test:all
 ```
 
 These E2E tests are also executed in GitHub Actions.
@@ -187,7 +183,7 @@ By default, the output is displayed on the console (stdout).
 To generate a compatibility matrix file, set the `CREATE_COMP_MATRIX` parameter to `true`:
 
 ```bash
-task test CMD=sign CREATE_COMP_MATRIX=true
+task test:client CMD=sign-certificate CREATE_COMP_MATRIX=true
 ```
 
 ## Support, Feedback, Contributing

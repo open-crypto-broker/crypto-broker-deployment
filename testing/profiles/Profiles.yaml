@@ -1,40 +1,52 @@
 ---
 # Global Settings
-Settings:
-  CryptoLibrary: native
+#Settings:
+#  CryptoLibrary: native
 
-Profiles:
+#Profiles:
   # SHA2 Test Profiles
-  - Name: KAT_SHA256
-    API:
-      HashData:
-        HashAlg: sha-256
+- Name: KAT_SHA256
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha-256
 
-  - Name: KAT_SHA384
-    API:
-      HashData:
-        HashAlg: sha-384
+- Name: KAT_SHA384
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha-384
 
-  - Name: KAT_SHA512
-    API:
-      HashData:
-        HashAlg: sha-512
+- Name: KAT_SHA512
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha-512
 
   # SHA3 Test Profiles
-  - Name: KAT_SHA3_256
-    API:
-      HashData:
-        HashAlg: sha3-256
+- Name: KAT_SHA3_256
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha3-256
 
-  - Name: KAT_SHA3_384
-    API:
-      HashData:
-        HashAlg: sha3-384
+- Name: KAT_SHA3_384
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha3-384
 
-  - Name: KAT_SHA3_512
-    API:
-      HashData:
-        HashAlg: sha3-512
+- Name: KAT_SHA3_512
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha3-512
 
   # Crypto Profiles Catalogue
   #
@@ -58,33 +70,35 @@ Profiles:
 
   # Default profile kept minimal – broad demo; not tied to a single external standard.
   #   Reasoning: Showcases widest hash (sha3-512) and high-strength hash/sign combo for testing.
-  - Name: Default
-    API:
-      HashData:
-        HashAlg: sha3-512
-      SignCertificate:
-        SignAlg: ecdsa
-        HashAlg: sha-512
-        SKIHashAlg: sha-256
-        Validity:
-          ValidNotBeforeOffset: -1h
-          ValidNotAfterOffset: 8760h
-        KeyConstraints:
-          Subject:
-            RSA:
-              MinKeySize: 2048
-              MaxKeySize: 4096
-            ECDSA:
-              MinKeySize: 256
-              MaxKeySize: 521
-          Issuer:
-            ECDSA:
-              MinKeySize: 384
-              MaxKeySize: 521
-        KeyUsage:         [digitalSignature, keyEncipherment]
-        ExtendedKeyUsage: [clientAuth]
-        BasicConstraints:
-          CA: false
+- Name: Default
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha3-512
+    SignCertificate:
+      SignAlg: ecdsa
+      HashAlg: sha-512
+      SKIHashAlg: sha-256
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 8760h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 2048
+            MaxKeySize: 4096
+          ECDSA:
+            MinKeySize: 256
+            MaxKeySize: 521
+        Issuer:
+          ECDSA:
+            MinKeySize: 384
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
 
   # KSA NCA MODERATE
   #   Goal: Provide moderate security requirements equivalent to 128-bit security level.
@@ -93,33 +107,35 @@ Profiles:
   #   ECDSA: 256-bit - 384-bit (curve P-256, P-384)
   #   Validity: Three years (the document states 5 years for MODERATE, but this seems to be a mistake)
   #   Reference: NCS_1_2020 Page 12 and 16
-  - Name: KSA-MODERATE-2020
-    API:
-      HashData:
-        HashAlg: sha-384
-      SignCertificate:
-        SignAlg: rsa
-        HashAlg: sha-384
-        SKIHashAlg: sha-256
-        Validity:
-          ValidNotBeforeOffset: -1h
-          ValidNotAfterOffset: 26280h
-        KeyConstraints:
-          Subject:
-            RSA:
-              MinKeySize: 3072
-              MaxKeySize: 8192
-            ECDSA:
-              MinKeySize: 256
-              MaxKeySize: 384
-          Issuer:
-            RSA:
-              MinKeySize: 3072
-              MaxKeySize: 8192
-        KeyUsage:         [digitalSignature, keyEncipherment]
-        ExtendedKeyUsage: [clientAuth]
-        BasicConstraints:
-          CA: false
+- Name: KSA-MODERATE-2020
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha-384
+    SignCertificate:
+      SignAlg: rsa
+      HashAlg: sha-384
+      SKIHashAlg: sha-256
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 26280h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+          ECDSA:
+            MinKeySize: 256
+            MaxKeySize: 384
+        Issuer:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
 
   # KSA NCA ADVANCED
   #   Goal: Provide advanced security requirements equivalent to 256-bit security level.
@@ -128,30 +144,32 @@ Profiles:
   #   ECDSA: 512-bit (curve P-521)
   #   Validity: Five years (the document states 3 years for ADVANCED, but this seems to be a mistake)
   #   Reference: NCS_1_2020 Page 12 and 16
-  - Name: KSA-ADVANCED-2020
-    API:
-      HashData:
-        HashAlg: sha3-512
-      SignCertificate:
-        SignAlg: ecdsa
-        HashAlg: sha-512 # Using sha-512 as sha3-512 is not yet supported in Go crypto in combination with ecdsa
-        SKIHashAlg: sha-256
-        Validity:
-          ValidNotBeforeOffset: -1h
-          ValidNotAfterOffset: 43800h
-        KeyConstraints:
-          Subject:
-            ECDSA:
-              MinKeySize: 521
-              MaxKeySize: 521
-          Issuer:
-            ECDSA:
-              MinKeySize: 521
-              MaxKeySize: 521
-        KeyUsage:         [digitalSignature, keyEncipherment]
-        ExtendedKeyUsage: [clientAuth]
-        BasicConstraints:
-          CA: false
+- Name: KSA-ADVANCED-2020
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha3-512
+    SignCertificate:
+      SignAlg: ecdsa
+      HashAlg: sha-512 # Using sha-512 as sha3-512 is not yet supported in Go crypto in combination with ecdsa
+      SKIHashAlg: sha-256
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 43800h
+      KeyConstraints:
+        Subject:
+          ECDSA:
+            MinKeySize: 521
+            MaxKeySize: 521
+        Issuer:
+          ECDSA:
+            MinKeySize: 521
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
 
   # FIPS-140-3 128bit
   #   Goal: Provide 128-bit security.
@@ -159,38 +177,40 @@ Profiles:
   #   RSA: >= 3072 bit
   #   ECDSA: 256-bit - 383-bit
   #   Reference: NIST_SP_800_57, Table 2 on Page 54-55, Table 3 on Page 56
-  - Name: FIPS-140-3-128bit
-    API:
-      HashData:
-        HashAlg: sha-256
-      EncryptData:
-        EncryptAlg: aes-gcm
-        KeySize: 128
-        NonceStrategy: user-provided
-        TagLength: 96
-      SignCertificate:
-        SignAlg: rsa
-        HashAlg: sha-256
-        SKIHashAlg: sha-256
-        Validity:
-          ValidNotBeforeOffset: -1h
-          ValidNotAfterOffset: 8760h
-        KeyConstraints:
-          Subject:
-            RSA:
-              MinKeySize: 3072
-              MaxKeySize: 8192
-            ECDSA:
-              MinKeySize: 256
-              MaxKeySize: 384
-          Issuer:
-            RSA:
-              MinKeySize: 3072
-              MaxKeySize: 8192
-        KeyUsage:         [digitalSignature, keyEncipherment]
-        ExtendedKeyUsage: [clientAuth]
-        BasicConstraints:
-          CA: false
+- Name: FIPS-140-3-128bit
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha-256
+    EncryptData:
+      EncryptAlg: aes-gcm
+      KeySize: 128
+      NonceStrategy: user-provided
+      TagLength: 96
+    SignCertificate:
+      SignAlg: rsa
+      HashAlg: sha-256
+      SKIHashAlg: sha-256
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 8760h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+          ECDSA:
+            MinKeySize: 256
+            MaxKeySize: 384
+        Issuer:
+          RSA:
+            MinKeySize: 3072
+            MaxKeySize: 8192
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
 
   # FIPS-140-3 192bit
   #   Goal: Provide 192-bit security.
@@ -198,38 +218,40 @@ Profiles:
   #   RSA: >= 8192 bit
   #   ECDSA: 384-bit - 521-bit
   #   Reference: NIST_SP_800_57, Table 2 on Page 54-55, Table 3 on Page 56
-  - Name: FIPS-140-3-192bit
-    API:
-      HashData:
-        HashAlg: sha-384
-      EncryptData:
-        EncryptAlg: aes-gcm
-        KeySize: 192
-        NonceStrategy: user-provided
-        TagLength: 112
-      SignCertificate:
-        SignAlg: ecdsa
-        HashAlg: sha-384
-        SKIHashAlg: sha-384
-        Validity:
-          ValidNotBeforeOffset: -1h
-          ValidNotAfterOffset: 8760h
-        KeyConstraints:
-          Subject:
-            RSA:
-              MinKeySize: 8192
-              MaxKeySize: 15380
-            ECDSA:
-              MinKeySize: 384
-              MaxKeySize: 521
-          Issuer:
-            ECDSA:
-              MinKeySize: 384
-              MaxKeySize: 521
-        KeyUsage:         [digitalSignature, keyEncipherment]
-        ExtendedKeyUsage: [clientAuth]
-        BasicConstraints:
-          CA: false
+- Name: FIPS-140-3-192bit
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha-384
+    EncryptData:
+      EncryptAlg: aes-gcm
+      KeySize: 192
+      NonceStrategy: user-provided
+      TagLength: 112
+    SignCertificate:
+      SignAlg: ecdsa
+      HashAlg: sha-384
+      SKIHashAlg: sha-384
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 8760h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 8192
+            MaxKeySize: 15380
+          ECDSA:
+            MinKeySize: 384
+            MaxKeySize: 521
+        Issuer:
+          ECDSA:
+            MinKeySize: 384
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature, keyEncipherment]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
 
   # FIPS-140-3 256bit
   #   Goal: Provide 256-bit security.
@@ -237,38 +259,40 @@ Profiles:
   #   RSA: 15380-bit
   #   ECDSA: >= 512-bit
   #   Reference: NIST_SP_800_57, Table 2 on Page 54-55, Table 3 on Page 56
-  - Name: FIPS-140-3-256bit
-    API:
-      HashData:
-        HashAlg: sha-512
-      EncryptData:
-        EncryptAlg: aes-gcm
-        KeySize: 256
-        NonceStrategy: user-provided
-        TagLength: 128
-      SignCertificate:
-        SignAlg: ecdsa
-        HashAlg: sha-512
-        SKIHashAlg: sha-512
-        Validity:
-          ValidNotBeforeOffset: -1h
-          ValidNotAfterOffset: 4380h
-        KeyConstraints:
-          Subject:
-            RSA:
-              MinKeySize: 15380
-              MaxKeySize: 15380
-            ECDSA:
-              MinKeySize: 521
-              MaxKeySize: 521
-          Issuer:
-            ECDSA:
-              MinKeySize: 521
-              MaxKeySize: 521
-        KeyUsage:         [digitalSignature]
-        ExtendedKeyUsage: [clientAuth]
-        BasicConstraints:
-          CA: false
+- Name: FIPS-140-3-256bit
+  Settings:
+    CryptoLibrary: native
+  API:
+    HashData:
+      HashAlg: sha-512
+    EncryptData:
+      EncryptAlg: aes-gcm
+      KeySize: 256
+      NonceStrategy: user-provided
+      TagLength: 128
+    SignCertificate:
+      SignAlg: ecdsa
+      HashAlg: sha-512
+      SKIHashAlg: sha-512
+      Validity:
+        ValidNotBeforeOffset: -1h
+        ValidNotAfterOffset: 4380h
+      KeyConstraints:
+        Subject:
+          RSA:
+            MinKeySize: 15380
+            MaxKeySize: 15380
+          ECDSA:
+            MinKeySize: 521
+            MaxKeySize: 521
+        Issuer:
+          ECDSA:
+            MinKeySize: 521
+            MaxKeySize: 521
+      KeyUsage:         [digitalSignature]
+      ExtendedKeyUsage: [clientAuth]
+      BasicConstraints:
+        CA: false
 
 # References
 #   [FIPS_140_3] FIPS 140-3 -- Security Requirements for Cryptographic Modules -- https://csrc.nist.gov/publications/detail/fips/140/3/final

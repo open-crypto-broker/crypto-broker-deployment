@@ -2,7 +2,7 @@
 
 This compatibility matrix shows which client supports which profile and which CSR when signing certificates with different CA issuers.
 
-Legend: ✅ - Supported by profile, ❌ - Not Supported by profile
+Legend: ✅ - Supported by profile, ❌ - Not supported by profile
 
 ## Go Client
 

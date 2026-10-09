@@ -2,6 +2,16 @@
 
 version: '3'
 
+includes:
+  test:
+    taskfile: taskfiles/testing.yaml
+    vars:
+      CLIENTS:
+        ref: .CLIENTS
+      GREP_CMD:
+        ref: .GREP_CMD
+  deploy: taskfiles/deployment.yaml
+
 vars:
   # Map of clients for each programming language and the path to its executable
   CLIENTS:
@@ -12,65 +22,6 @@ vars:
       js:
         cmd: "./crypto-broker-cli-js/bin/js-client-cli"
         env: ".env.cli-js"
-
-  COMMANDS: ["health", "hash-data", "sign-certificate"]
-  # Here are the Known-Answer-Tests for the following text (without quotes): "Welcome CryptoBroker"
-  KAT:
-    map: {
-      KAT_SHA256:
-        4a9f3b5a0ad21b75c5cd6ed018167ad9771ad2662756e26f0437c9c7a7cee27a,
-      KAT_SHA384:
-        b4bba0f7db27f690f11f795f969a539cbf1eee03282979ec1c341a73d66f2316bd180bf8bc1c1fe73cb7684e6073c079,
-      KAT_SHA512:
-        0d1d495b4dd049d07274d3e4b490dd24136315d4d8bfd83208b48213a0cd57cfa3b2ca3ab2f66cba900de28a5d4ddc4c56d116f518f2a12503c8a9bbe378577a,
-      KAT_SHA3_256:
-        dbb1a7578253838e60705e19f7f3efc384320515b1398ce7358c12307077c0fe,
-      KAT_SHA3_384:
-        dfeb2499281d6fd2bf5c6b85d20602d82303b66ad5b6464e68fe680ca67360c317a5c4514c3f5365c71cd557144397e6,
-      KAT_SHA3_512:
-        14894112f30f982c01e1de386ee9ca60bff70469d9fd249a5f9fbfc66a29c37c76b3fb15c294a6b6d3a1609fa59ca14194e2bc9da16610fa7f1a10dad38d628e,
-      }
-  # Plaintext used for the AES-GCM encrypt/decrypt Known-Answer-Tests (without quotes): "Welcome CryptoBroker"
-  ENC_PLAINTEXT: "Welcome CryptoBroker"
-  # AES-GCM KAT fixtures: maps each encryption profile to its fixture file in the
-  # testing folder. Each fixture holds the hex-encoded KEY, NONCE, AAD and the
-  # expected CIPHERTEXT and TAG for the plaintext above (caller-managed rawKey flow).
-  ENC_KAT:
-    map:
-      FIPS-140-3-128bit:
-        fixture: testing/encryption/aes-128-gcm.env
-      FIPS-140-3-192bit:
-        fixture: testing/encryption/aes-192-gcm.env
-      FIPS-140-3-256bit:
-        fixture: testing/encryption/aes-256-gcm.env
-  # Profiles, CSRs, and Issuer certificates for the SignCertificate tests in the Crypto Broker server
-  PROFILES: [
-    "Default",
-    "KSA-MODERATE-2020",
-    "KSA-ADVANCED-2020",
-    "FIPS-140-3-128bit",
-    "FIPS-140-3-192bit",
-    "FIPS-140-3-256bit"
-  ]
-  CSR: [
-    "csr-rsa-2048",
-    "csr-rsa-3072",
-    "csr-rsa-4096",
-    "csr-rsa-8192",
-    "csr-rsa-15380",
-    "csr-nist-secp224r1",
-    "csr-nist-secp256r1",
-    "csr-nist-secp384r1",
-    "csr-nist-secp521r1"
-  ]
-  ISSUER: [
-    "test-CA-rsa-3072",
-    "test-CA-nist-secp256r1",
-    "test-CA-nist-secp384r1",
-    "test-CA-nist-secp521r1"
-  ]
-  # Compatibility matrix file path
-  COMP_MATRIX: "testing/compatibility-matrix.md"
   # GNU grep support depending on OS
   GREP_CMD:
     sh: |
@@ -78,11 +29,6 @@ vars:
         Darwin*) echo ggrep ;;
         Linux*) echo grep ;;
       esac
-  # OpenTelemetry Collector configuration file path
-  OTEL_VERSION: 0.145.0
-  OTEL_DIST: otelcol
-  OTEL_URL: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v{{.OTEL_VERSION}}/{{.OTEL_DIST}}_{{.OTEL_VERSION}}_linux_amd64.tar.gz
-  OTEL_SHA256: b877c1886e8e41d496f294c7e8c38d85b9db79a97b4e8ee80e36ac67dff9a4de
 
 tasks:
   ################# Utility Tasks ####################
@@ -94,6 +40,7 @@ tasks:
   # Check if all necessary cli tools are installed
   check-prerequisites:
     desc: "Verify all required tools are available (go, node, npm, git, cf, docker)"
+    silent: true
     cmds:
       - |
         echo "[📋] Checking prerequisites..."
@@ -190,7 +137,7 @@ tasks:
   # At first delete the source folder if it exists.
   # Then the repo will be cloned and the submodules initialized.
   # After that the Crypto Broker will be build.
-  build-crypto-broker-server:
+  build-server:
     desc: "Clone and build Crypto Broker server. The branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
     vars:
       BRANCH: '{{.BRANCH | default "main"}}'
@@ -198,36 +145,36 @@ tasks:
       ARCH: '{{.ARCH}}'
       FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
     cmds:
-      - task: delete-crypto-broker-server
-      - task: clone-crypto-broker-server
+      - task: delete-server
+      - task: clone-server
         vars:
           BRANCH: '{{.BRANCH}}'
-      - task: build-crypto-broker-server-internal
+      - task: build-server-internal
         vars:
           OS: '{{.OS}}'
           ARCH: '{{.ARCH}}'
           FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION}}'
 
-  delete-crypto-broker-server:
+  delete-server:
     desc: "Delete Crypto Broker server source folder"
     cmds:
       - rm -rf crypto-broker-server
 
   # Internal tasks for building Crypto Broker server
-  clone-crypto-broker-server:
+  clone-server:
     desc: "Clone Crypto Broker server"
     internal: true
     cmds:
       - git clone -b {{.BRANCH}} --single-branch https://github.com/open-crypto-broker/crypto-broker-server.git
-      - task: init-protobuf-crypto-broker-server
+      - task: init-protobuf-server
 
-  init-protobuf-crypto-broker-server:
+  init-protobuf-server:
     internal: true
     dir: crypto-broker-server/protobuf
     cmds:
       - git submodule update --init
 
-  build-crypto-broker-server-internal:
+  build-server-internal:
     internal: true
     status:
       - test -d crypto-broker-server
@@ -241,104 +188,6 @@ tasks:
             | grep -F "GOFIPS140={{.FIPS_MODE_MODULE_VERSION}}"
         fi
 
-  ################# Cleanup Tasks ####################
-  delete-all:
-    desc: "Delete the Crypto Broker server and client source folders, the deployment folders, and also the deployment on Cloud Foundry"
-    vars:
-      ref: .CLIENTS
-    cmds:
-      - task: delete-crypto-broker-server
-      - for: { var: CLIENTS }
-        task: delete-cli
-        vars:
-          CLIENT: '{{.KEY}}'
-      - for: { var: CLIENTS }
-        task: cf-delete
-        vars:
-          CLIENT: '{{.KEY}}'
-      - echo "[✅] Cleanup complete"
-
-  ################# End-to-End Tests ####################
-  # Public tasks for testing the different commands of all clients
-  test:
-    desc: "Build, run and perform tests for a specific CMD with all clients. The OS, ARCH, or BRANCH can be also specified. For sign command, use CREATE_COMP_MATRIX=true to generate a compatibility matrix."
-    requires:
-      vars:
-        - name: CMD
-          enum: ["health", "benchmark", "hash-data", "sign-certificate"]
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS}}'
-      ARCH: '{{.ARCH}}'
-      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX | default "false"}}'
-    cmds:
-      - task: create-env-files
-      - task: build-dependencies
-        vars:
-          BRANCH: '{{.BRANCH}}'
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-      - task: start-crypto-broker-server
-      - defer: { task: stop-crypto-broker-server }
-      - task: test-{{.CMD}}
-        vars:
-          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-
-  test-all:
-    desc: "Combine all tests for all clients in one task. The OS, ARCH, or BRANCH can be also specified for building the binaries."
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS}}'
-      ARCH: '{{.ARCH}}'
-      COMMANDS:
-        ref: .COMMANDS
-    cmds:
-      - echo "[📋] Starting comprehensive test suite..."
-      - task: create-env-files
-      - task: build-dependencies
-        vars:
-          BRANCH: '{{.BRANCH}}'
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-      - task: start-crypto-broker-server
-      - defer: { task: stop-crypto-broker-server }
-      - for: { var: COMMANDS }
-        task: test-{{.ITEM}}
-
-  # Internal tasks for end-to-end tests
-  # Create .env files with console-only settings when they don't already exist (e.g. in CI).
-  create-env-files:
-    desc: "Create .env files with console-only settings for CI testing"
-    internal: true
-    status:
-      - test -f .env.server
-      - test -f .env.cli-go
-      - test -f .env.cli-js
-    cmds:
-      - |
-        cat > .env.server <<'EOL'
-        ENABLE_FIPS_MODE="false"
-        OTEL_SERVICE_NAME="crypto-broker-server"
-        OTEL_LOGS_EXPORTER="console"
-        OTEL_METRICS_EXPORTER="none"
-        OTEL_TRACES_EXPORTER="none"
-        EOL
-        echo "[✅] Created .env.server"
-      - |
-        cat > .env.cli-go <<'EOL'
-        OTEL_SERVICE_NAME="crypto-broker-cli-go"
-        OTEL_LOGS_EXPORTER="console"
-        OTEL_TRACES_EXPORTER="none"
-        EOL
-        echo "[✅] Created .env.cli-go"
-      - |
-        cat > .env.cli-js <<'EOL'
-        OTEL_SERVICE_NAME="crypto-broker-cli-js"
-        OTEL_LOGS_EXPORTER="console"
-        OTEL_TRACES_EXPORTER="none"
-        EOL
-        echo "[✅] Created .env.cli-js"
-
   # Build Crypto Broker server and the clients for end-to-end tests
   build-dependencies:
     desc: "Build all dependencies: clients and server, depending on the specified branch"
@@ -346,7 +195,7 @@ tasks:
     vars:
       ref: .CLIENTS
     cmds:
-      - task: build-crypto-broker-server
+      - task: build-server
         vars:
           BRANCH: '{{.BRANCH}}'
           OS: '{{.OS}}'
@@ -361,727 +210,19 @@ tasks:
           OS: '{{.OS}}'
           ARCH: '{{.ARCH}}'
 
-  # Start/Stop Crypto Broker server
-  start-crypto-broker-server:
-    desc: "Start the Crypto Broker Server with a custom test profile"
-    internal: true
-    dotenv: ['.env.server']
-    cmds:
-      - CRYPTO_BROKER_PROFILES_DIR=$PWD/testing/profiles ./crypto-broker-server/bin/cryptobroker-server &
-
-  stop-crypto-broker-server:
-    desc: "Stop the Crypto Broker Server after all tests were executed"
-    internal: true
-    silent: true
-    cmds:
-      - pkill -TERM -f cryptobroker-server || echo "[ℹ️] Server process not running"
-      - sleep 1
-      - pkill -KILL -f cryptobroker-server || true
-      - echo "[✅] Server stopped"
-
-  # Health check tests from the clients
-  test-health:
-    desc: "Requests the server status using each CLI's health command"
-    internal: true
-    silent: true
+  ################# Cleanup Tasks ####################
+  delete-all:
+    desc: "Delete the Crypto Broker server and client source folders, the deployment folders, and also the deployment on Cloud Foundry"
     vars:
       ref: .CLIENTS
     cmds:
+      - task: delete-server
       - for: { var: CLIENTS }
-        cmd:
-          |
-          set -e
-          echo "[INFO] Health check with {{.KEY | upper}} client"
-
-          set -a
-          source {{.ITEM.env}}
-          set +a
-
-          RESPONSE=$({{.ITEM.cmd}} health)
-          if echo "$RESPONSE" | {{.GREP_CMD}} -E '("status"||"Status"):\s?"SERVING"' ; then
-            echo "[✅] Crypto Broker server is healthy"
-          else
-            echo "[❌] Crypto Broker server is not healthy"
-            exit 1
-          fi
-
-  # Benchmark tests from the clients
-  test-benchmark:
-    desc: "Requests the benchmark command using each CLI's benchmark command"
-    internal: true
-    silent: true
-    vars:
-      ref: .CLIENTS
-    cmds:
-      - for: { var: CLIENTS }
-        cmd:
-          |
-          set -e
-          echo "[INFO] Benchmark test with {{.KEY | upper}} client"
-
-          set -a
-          source {{.ITEM.env}}
-          set +a
-
-          RESPONSE=$({{.ITEM.cmd}} benchmark)
-          if [ $? -ne 0 ]; then
-            echo "[❌] Benchmark command failed"
-            exit 1
-          else
-            echo "$RESPONSE"
-            echo "[✅] Benchmark command successful"
-          fi
-
-  # Hashing tests from the clients
-  test-hash-data:
-    desc: "Iterate hashing tests over all clients"
-    internal: true
-    vars:
-      CLIENTS:
-        ref: .CLIENTS
-    cmds:
-      - for: { var: CLIENTS }
-        task: test-hash-data-KATs
+        task: delete-cli
         vars:
-          CLIENT_PATH: '{{.ITEM.cmd}}'
-          CLIENT_ENV: '{{.ITEM.env}}'
-
-  test-hash-data-KATs:
-    desc: "Iterate over all hash-data KATs"
-    internal: true
-    silent: true
-    vars:
-      KAT:
-        ref: .KAT
-    cmds:
-      - for: { var: KAT }
-        cmd:
-          |
-          set -e
-          echo "[INFO] Test {{.KEY}}"
-
-          set -a
-          source {{.CLIENT_ENV}}
-          set +a
-
-          HASH_RESPONSE=$({{.CLIENT_PATH}} hash-data --profile={{.KEY}} "Welcome CryptoBroker" | {{.GREP_CMD}} -oP '"[hH]ashValueHex":\s?"\K[^"]+')
-          if [[ $HASH_RESPONSE != {{.ITEM}} ]] then
-            echo "[❌] Hash values do not match!"
-            exit 1
-          else
-            echo "[✅] Hash value matches expected KAT"
-          fi
-
-  # AES-GCM encrypt/decrypt tests from the clients
-  test-encrypt:
-    desc: "Iterate AES-GCM encrypt/decrypt round-trip tests over all clients"
-    internal: true
-    vars:
-      CLIENTS:
-        ref: .CLIENTS
-    cmds:
-      - for: { var: CLIENTS }
-        task: test-encrypt-KATs
-        vars:
-          CLIENT_PATH: '{{.ITEM.cmd}}'
-          CLIENT_ENV: '{{.ITEM.env}}'
-
-  test-encrypt-KATs:
-    desc: "Iterate over all AES-GCM KATs: encrypt (assert ciphertext/tag) then decrypt (assert round-trip)"
-    internal: true
-    silent: true
-    vars:
-      ENC_KAT:
-        ref: .ENC_KAT
-    cmds:
-      - for: { var: ENC_KAT }
-        cmd:
-          |
-          set -e
-          echo "[INFO] Test AES-GCM with profile {{.KEY}}"
-
-          set -a
-          source {{.CLIENT_ENV}}
-          source {{.ITEM.fixture}}
-          set +a
-
-          # Preserve the expected known-answer values before invoking the client
-          EXPECTED_CIPHERTEXT="$CIPHERTEXT"
-          EXPECTED_TAG="$TAG"
-
-          # --- Encrypt: assert ciphertext and tag match the known-answer test ---
-          ENC_RESPONSE=$({{.CLIENT_PATH}} encrypt \
-            --profile={{.KEY}} \
-            --keySource=raw \
-            --key="$KEY" \
-            --nonce="$NONCE" \
-            --aad="$AAD" \
-            "{{.ENC_PLAINTEXT}}")
-          ACTUAL_CIPHERTEXT=$(echo "$ENC_RESPONSE" | {{.GREP_CMD}} -oP '"ciphertext":\s?"\K[^"]+')
-          ACTUAL_TAG=$(echo "$ENC_RESPONSE" | {{.GREP_CMD}} -oP '"tag":\s?"\K[^"]+')
-
-          if [[ "$ACTUAL_CIPHERTEXT" != "$EXPECTED_CIPHERTEXT" ]]; then
-            echo "[❌] Ciphertext does not match expected KAT!"
-            exit 1
-          fi
-          if [[ "$ACTUAL_TAG" != "$EXPECTED_TAG" ]]; then
-            echo "[❌] Authentication tag does not match expected KAT!"
-            exit 1
-          fi
-          echo "[✅] Ciphertext and tag match expected KAT"
-
-          # --- Decrypt: assert the plaintext round-trips ---
-          DEC_RESPONSE=$({{.CLIENT_PATH}} decrypt \
-            --profile={{.KEY}} \
-            --keySource=raw \
-            --key="$KEY" \
-            --nonce="$NONCE" \
-            --aad="$AAD" \
-            --tag="$EXPECTED_TAG" \
-            "$EXPECTED_CIPHERTEXT")
-          ACTUAL_PLAINTEXT=$(echo "$DEC_RESPONSE" | {{.GREP_CMD}} -oP '"plaintext":\s?"\K[^"]+')
-          if [[ "$ACTUAL_PLAINTEXT" != "{{.ENC_PLAINTEXT}}" ]]; then
-            echo "[❌] Decrypted plaintext does not match original!"
-            exit 1
-          fi
-          echo "[✅] Decrypted plaintext matches original"
-
-  # Sign certificate tests from the clients
-  test-sign-certificate:
-    desc: "Iterate signing tests over all clients"
-    internal: true
-    silent: true
-    vars:
-      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-      CLIENTS:
-        ref: .CLIENTS
-    cmds:
-        # Delete previous compatibility matrix
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        rm -f {{.COMP_MATRIX}}
-        {{end}}
-      # Create header for compatibility matrix
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "# Clients Compatibility Matrix\n\n" >> {{.COMP_MATRIX}}
-        printf "This compatibility matrix shows which client supports which profile and which CSR when signing certificates with different CA issuers.\n\n" >> {{.COMP_MATRIX}}
-        printf "Legend: ✅ - Supported by profile, ❌ - Not supported by profile\n\n" >> {{.COMP_MATRIX}}
-        {{end}}
-      - for: { var: CLIENTS }
-        task: test-sign-iterate-profiles
-        vars:
-          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
           CLIENT: '{{.KEY}}'
-          CLIENT_PATH: '{{.ITEM.cmd}}'
-          CLIENT_ENV: '{{.ITEM.env}}'
-      # Remove duplicate newline at EOF (otherwise Markdownlint will complain)
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        truncate -s -1 {{.COMP_MATRIX}}
-        echo "[✅] Compatibility matrix created at {{.COMP_MATRIX}}"
-        {{end}}
-
-  test-sign-iterate-profiles:
-    desc: "Iterate over each profile"
-    internal: true
-    silent: true
-    vars:
-      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-      PROFILES:
-        ref: .PROFILES
-    cmds:
-      # Add header for each client
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "## {{.CLIENT | title}} Client\n\n" >> {{.COMP_MATRIX}}
-        {{else}}
-        printf "\n[INFO] Testing client: {{.CLIENT | title}}\n"
-        {{end}}
-      - for: { var: PROFILES }
-        task: test-sign-iterate-issuer
-        vars:
-          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-          CLIENT_PATH: '{{.CLIENT_PATH}}'
-          CLIENT_ENV: '{{.CLIENT_ENV}}'
-          PROFILE: '{{.ITEM}}'
-
-  test-sign-iterate-issuer:
-    desc: "Iterate over each CA-issuer certificate and key"
-    internal: true
-    silent: true
-    vars:
-      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-      CSR:
-        ref: .CSR
-      ISSUER:
-        ref: .ISSUER
-    cmds:
-      - task: comp-matrix-create-header-row
-        vars:
-          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-          CSR:
-            ref: .CSR
-          PROFILE: '{{.PROFILE}}'
-      ### Fill the table
-      # Iterate for each issuer CA and key over each CSR
-      - for: { var: ISSUER }
-        task: test-sign-iterate-csr
-        vars:
-          CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-          CLIENT_PATH: '{{.CLIENT_PATH}}'
-          CLIENT_ENV: '{{.CLIENT_ENV}}'
-          PROFILE: '{{.PROFILE}}'
-          ISSUER: '{{.ITEM}}'
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "\n" >> {{.COMP_MATRIX}}
-        {{end}}
-
-  comp-matrix-create-header-row:
-    desc: "Create header rows for the compatibility matrix"
-    internal: true
-    silent: true
-    vars:
-      PROFILE: '{{.PROFILE}}'
-      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-      CSR:
-        ref: .CSR
-    cmds:
-      ### Add header for each profile
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "### Profile \"{{.PROFILE}}\"\n\n" >> {{.COMP_MATRIX}}
-        {{end}}
-      ### Header row generation
-      # First cell of header row
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "| Issuer↓ \ CSR➔ |" >> {{.COMP_MATRIX}}
-        {{end}}
-      # Create the rest of the header row for the compatibility matrix
-      - for: { var: CSR }
-        cmd:
-          |
-          {{if eq .CREATE_COMP_MATRIX "true"}}
-          printf " {{.ITEM | upper}} |" >> {{.COMP_MATRIX}}
-          {{end}}
-      # Add newline at end of header row
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "\n" >> {{.COMP_MATRIX}}
-        {{end}}
-      ### Markdown specific second row
-      # First cell of the second row
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "| --- |" >> {{.COMP_MATRIX}}
-        {{end}}
-      # Create the rest of the second row with center alignment
-      - for: { var: CSR }
-        cmd: |
-          {{if eq .CREATE_COMP_MATRIX "true"}}
-          printf " :---: |" >> {{.COMP_MATRIX}}
-          {{end}}
-      # Add newline at end of second row
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "\n" >> {{.COMP_MATRIX}}
-        {{end}}
-
-  test-sign-iterate-csr:
-    desc: "Iterate over each CSR"
-    internal: true
-    silent: true
-    ignore_error: true
-    vars:
-      CREATE_COMP_MATRIX: '{{.CREATE_COMP_MATRIX}}'
-      CSR:
-        ref: .CSR
-    cmds:
-      # First cell in each row: Issuer key size
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "| {{.ISSUER | upper}} |" >> {{.COMP_MATRIX}}
-        {{end}}
-      - for: { var: CSR }
-        cmd: |
-          set +e
-          TEST_CA_DIR=testing/certificates/test-ca
-          TEST_CSR_DIR=testing/certificates/test-csr
-
-          set -a
-          source {{.CLIENT_ENV}}
-          set +a
-
-          {{if ne .CREATE_COMP_MATRIX "true"}}
-          echo -e "Profile: {{.PROFILE}}\nCSR: {{.ITEM}}\nIssuer: {{.ISSUER}}"
-          {{end}}
-          RESPONSE=$({{.CLIENT_PATH}} \
-            sign-certificate \
-            --profile={{.PROFILE}} \
-            --csr=$TEST_CSR_DIR/{{.ITEM}}.csr \
-            --caCert=$TEST_CA_DIR/cert-{{.ISSUER}}.pem \
-            --caKey=$TEST_CA_DIR/{{.ISSUER}}.pem \
-            2>&1)
-          STATUS=$?
-          if [ $STATUS -ne 0 ]; then
-            {{if eq .CREATE_COMP_MATRIX "true"}}
-            printf " ❌ |" >> {{.COMP_MATRIX}}
-            {{else}}
-            echo -e "❌ Command failed\n"
-            {{end}}
-          elif echo "$RESPONSE" | {{.GREP_CMD}} -E 'BEGIN CERTIFICATE'; then
-            {{if eq .CREATE_COMP_MATRIX "true"}}
-            printf " ✅ |" >> {{.COMP_MATRIX}}
-            {{else}}
-            echo -e "✅ Supported by profile\n"
-            {{end}}
-          else
-            {{if eq .CREATE_COMP_MATRIX "true"}}
-            printf " ❌ |" >> {{.COMP_MATRIX}}
-            {{else}}
-            echo -e "❌ Not supported by profile\n"
-            {{end}}
-          fi
-          set -e
-      - |
-        {{if eq .CREATE_COMP_MATRIX "true"}}
-        printf "\n" >> {{.COMP_MATRIX}}
-        {{end}}
-
-  # Test custom subject feature
-  test-sign-certificate-clis-custom-subject:
-    desc: "Iterate signing tests over all clients with a custom subject"
-    vars:
-      ref: .CLIENTS
-    cmds:
       - for: { var: CLIENTS }
-        task: test-sign-certificate-custom-subject
+        task: test:cf-delete
         vars:
-          CLIENT_PATH: '{{.ITEM.cmd}}'
-          CLIENT_ENV: '{{.ITEM.env}}'
-
-  test-sign-certificate-custom-subject:
-    desc: "Test custom subject with CLI API"
-    internal: true
-    cmds:
-      - |
-        echo "Test custom subject with CLI API"
-        TMP_DIR=tmp/certificate-responses/subject
-        TEST_CA_DIR=testing/certificates/test-ca
-        TEST_CSR_DIR=testing/certificates/test-csr
-        rm -rf $TMP_DIR
-        mkdir -p $TMP_DIR
-
-        set -a
-        source {{.CLIENT_ENV}}
-        set +a
-
-        SIGNED_CERTIFICATE=$({{.CLIENT_PATH}} sign-certificate --profile=Default --csr=$TEST_CSR_DIR/csr-nist-secp384r1.csr --caCert=$TEST_CA_DIR/cert-test-CA-nist-secp521r1.pem --caKey=$TEST_CA_DIR/test-CA-nist-secp521r1.pem --subject="C=DE, O=Test Org, OU=Test Certificate Service, OU=Dev, OU=Staging-certificate-service, L=test, CN=test" | {{.GREP_CMD}} 'BEGIN CERTIFICATE' | jq -r '.pem // .response.SignedCertificate.Pem // empty')
-        echo "$SIGNED_CERTIFICATE" > $TMP_DIR/tmp-cert-custom-subject.pem
-        openssl x509 -inform PEM -in $TMP_DIR/tmp-cert-custom-subject.pem -text
-
-  ################# Cloud Foundry Deployment ####################
-  # Public tasks for Cloud Foundry deployment
-  # The deployment is done over several stages.
-  # First, the old deployment folder is deleted.
-  # Second, the Crypto Broker server is build.
-  # Third, the specified client is build.
-  # Fourth, the deployment repo is created.
-  # Fifth, the necessary files from the Crypto Broker are copied to the deployment folder.
-  # Sixth, the necessary files from the client are copied to the deployment folder.
-  # Seventh, the cf CLI is invoked and the app is pushed to Cloud Foundry.
-  cf-deploy:
-    desc: "Deploy to Cloud Foundry the Crypto Broker server and client specified with CLIENT='', values are 'go', 'js'. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS | default "linux"}}'
-      ARCH: '{{.ARCH | default "amd64"}}'
-      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
-      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
-    requires:
-      vars:
-        - name: CLIENT
-          enum: [go, js]
-    cmds:
-      - task: delete-deployment-folder
-        vars:
-          CLIENT: '{{.CLIENT}}'
-      - task: build-crypto-broker-server
-        vars:
-          BRANCH: '{{.BRANCH}}'
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-          FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION}}'
-      - task: build-cli
-        vars:
-          CLIENT: '{{.CLIENT}}'
-          BRANCH: '{{.BRANCH}}'
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-      - task: create-deployment-folder
-        vars:
-          CLIENT: '{{.CLIENT}}'
-      - task: copy-crypto-broker-server
-        vars:
-          CLIENT: '{{.CLIENT}}'
-      - task: copy-test-certificates
-        vars:
-          CLIENT: '{{.CLIENT}}'
-      - task: copy-{{.CLIENT}}-cli
-      - task: copy-otel-collector
-      - cf push --random-route
-          --var fips_godebug_value={{.FIPS_GODEBUG_VALUE}}
-          -f deployments/cloud-foundry/{{.CLIENT}}/manifest.yaml
-          -p deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
-
-  cf-delete:
-    desc: "Delete the deployment folders and also on Cloud Foundry the deployment of Crypto Broker server and the specified client with CLIENT='', values are 'go', 'js'"
-    requires:
-      vars:
-        - name: CLIENT
-          enum: [go, js]
-    cmds:
-        - task: delete-deployment-folder
-          vars:
-            CLIENT: '{{.CLIENT}}'
-        - cf delete -r -f crypto-broker-{{.CLIENT}}-cli
-
-  # Internal tasks for deployment to Cloud Foundry
-  create-deployment-folder:
-    desc: "Create the deployment folder for Cloud Foundry"
-    internal: true
-    cmds:
-      - mkdir deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment
-
-  delete-deployment-folder:
-    desc: "Delete the deployment folder for Cloud Foundry"
-    internal: true
-    cmds:
-      - rm -rf deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment
-
-  copy-crypto-broker-server:
-    desc: "Copy Crypto Broker server files to deployment folder"
-    internal: true
-    cmds:
-      - cp crypto-broker-server/bin/cryptobroker-server deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
-      - cp testing/profiles/Profiles.yaml deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
-
-  copy-test-certificates:
-    desc: "Copy test CSR and test CA certificate and CA private key to Cloud Foundry"
-    internal: true
-    cmds:
-      - cp -r testing/certificates deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
-
-  download-otel-collector:
-    desc: "Download and extract the OpenTelemetry Collector binary"
-    internal: true
-    cmds:
-      - curl -L {{.OTEL_URL}} -o otelcol.tar.gz
-      - echo "{{.OTEL_SHA256}}  otelcol.tar.gz" | sha256sum -c -
-      - mkdir -p deployments/cloud-foundry/otel-collector/bin
-      - tar -xzf otelcol.tar.gz -C deployments/cloud-foundry/otel-collector/bin
-      - chmod +x deployments/cloud-foundry/otel-collector/bin/otelcol
-      - rm otelcol.tar.gz
-
-  copy-otel-collector:
-    desc: "Copy the OpenTelemetry Collector and its configuration file to the deployment folder"
-    deps: [download-otel-collector]
-    internal: true
-    cmds:
-      - cp deployments/cloud-foundry/otel-collector/bin/otelcol deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
-      - cp deployments/cloud-foundry/otel-collector/otel-config.yaml deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
-
-  # Go specific task
-  copy-go-cli:
-    desc: "Copy the necessary Go client files for Cloud Foundry deployment"
-    internal: true
-    cmds:
-      - cp crypto-broker-cli-go/bin/go-client-cli deployments/cloud-foundry/go/go-deployment
-      - cp crypto-broker-cli-go/bin/stress-test deployments/cloud-foundry/go/go-deployment
-
-  cf-stress-test:
-    desc: "Run the CLI-Go stress test in the deployed Cloud Foundry app"
-    vars:
-      CONCURRENT: '{{.CONCURRENT | default "100"}}'
-      NUM: '{{.NUM | default "100"}}'
-      COUNT: '{{.COUNT | default "1"}}'
-    cmds:
-      - cf ssh crypto-broker-go-cli -c
-          "STRESS_BENCHMARK_ENABLED=true
-          STRESS_CONCURRENT={{.CONCURRENT}}
-          STRESS_COUNT={{.NUM}}
-          ./app/stress-test
-          -test.run=^$
-          -test.bench=^BenchmarkStressHashConcurrentConnections$
-          -test.benchmem
-          -test.benchtime=1x
-          -test.count={{.COUNT}}"
-
-  # Node.js specific tasks
-  copy-js-cli:
-    desc: "Copy the Node.js client binary for Cloud Foundry deployment"
-    internal: true
-    cmds:
-      - cp crypto-broker-cli-js/bin/js-client-cli deployments/cloud-foundry/js/js-deployment/
-
-  ################# Kubernetes Deployment ####################
-  minikube-images:
-    desc: "Load the docker images into minikube (Note: this might take a while)"
-    vars:
-      TAG: '{{.TAG | default "latest"}}'
-    cmds:
-      - minikube image load
-          ghcr.io/open-crypto-broker/test_app_js:{{.TAG}}
-          ghcr.io/open-crypto-broker/test_app_go:{{.TAG}}
-          ghcr.io/open-crypto-broker/server:{{.TAG}}
-
-  kube-deploy:
-    desc: "Deploys the Kubernetes Crypto Broker"
-    dir: deployments/k8s/kube-broker/
-    vars:
-      TAG: '{{.TAG | default "dev"}}'
-      STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
-      STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
-      STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
-      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
-    cmds:
-      - helm upgrade --install -f Chart.yaml -f values.yaml
-          --set imageTag="{{.TAG}}"
-          --set cliStressApp.enabled="{{.STRESS_ENABLED}}"
-          --set cliStressApp.concurrent="{{.STRESS_CONCURRENT}}"
-          --set cliStressApp.num="{{.STRESS_NUM}}"
-          --set-string server.godebug="{{.FIPS_GODEBUG_VALUE}}"
-          crypto-broker --namespace crypto-broker --create-namespace .
-
-  kube-up:
-    desc: "Convenience wrapper: load images into minikube, then deploy the chart"
-    vars:
-      TAG: '{{.TAG | default "dev"}}'
-    cmds:
-      - task: minikube-images
-        vars:
-          TAG: '{{.TAG}}'
-      - task: kube-deploy
-        vars:
-          TAG: '{{.TAG}}'
-          STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
-          STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
-          STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
-          FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
-
-  kube-down:
-    desc: "Destroys the Kubernetes Crypto Broker deployment"
-    cmds:
-      - helm uninstall crypto-broker -n crypto-broker
-
-  kube-prepare-stress-test:
-    desc: "Build the Kubernetes stress-test image and load it into minikube"
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      ARCH: '{{.ARCH | default "amd64"}}'
-      TAG: '{{.TAG | default "dev"}}'
-    cmds:
-      - task: build-cli
-        vars:
-          CLIENT: go
-          BRANCH: '{{.BRANCH}}'
-          OS: linux
-          ARCH: '{{.ARCH}}'
-      - docker build
-          -f deployments/k8s/kube-broker/build/stress-client.Dockerfile
-          -t ghcr.io/open-crypto-broker/stress_test:{{.TAG}} .
-      - minikube image load ghcr.io/open-crypto-broker/stress_test:{{.TAG}}
-
-  kube-run-stress-test:
-    desc: "Run the CLI-Go stress test in the deployed Kubernetes pod"
-    vars:
-      COUNT: '{{.COUNT | default "1"}}'
-    preconditions:
-      - sh: minikube status --format '{{`{{.Host}}`}}' | grep -q Running
-        msg: "minikube is not running — start it with 'minikube start'."
-      - sh: kubectl get deployment/crypto-broker-kube-broker -n crypto-broker
-        msg: "Deployment not found — run 'task kube-deploy STRESS_ENABLED=true' first."
-    cmds:
-      - kubectl exec deployment/crypto-broker-kube-broker
-          -n crypto-broker
-          -c stress-test
-          --
-          /app/stress-test
-          -test.run=^$
-          -test.bench=^BenchmarkStressHashConcurrentConnections$
-          -test.benchmem
-          -test.benchtime=1x
-          -test.count={{.COUNT}}
-
-  ################# Docker-Compose Deployment ####################
-  docker-jaeger-build:
-    desc: "Build Crypto Broker docker images with Jaeger. Optionally specify an image tag with TAG=...)"
-    dir: deployments/docker/jaeger/
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      TAG: '{{.TAG | default "dev"}}'
-      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
-    deps:
-      - task: build-dependencies
-        vars:
-          BRANCH: '{{.BRANCH}}'
-    cmds:
-      - FIPS_MODE_MODULE_VERSION={{.FIPS_MODE_MODULE_VERSION}} TAG={{.TAG}}
-          docker compose -f jaeger.yml
-          -f server.yml
-          -f test_app_js.yml
-          -f test_app_go.yml build
-
-  docker-jaeger-deploy:
-    desc: "Deploy or destroy Crypto Broker docker images with Jaeger. Optionally specify an image tag with TAG=...)"
-    dir: deployments/docker/jaeger/
-    requires:
-      vars:
-        - name: CMD
-          enum: [up, down]
-    vars:
-      TAG: '{{.TAG | default "dev"}}'
-      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
-    cmds:
-      - FIPS_GODEBUG_VALUE={{.FIPS_GODEBUG_VALUE}} TAG={{.TAG}}
-          docker compose -f jaeger.yml
-          -f server.yml
-          -f test_app_js.yml
-          -f test_app_go.yml {{.CMD}}
-
-  docker-grafana-build:
-    desc: "Build Crypto Broker docker images with Grafana and the LGTM stack. Optionally specify an image tag with TAG=...)"
-    dir: deployments/docker/lgtm/
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      TAG: '{{.TAG | default "dev"}}'
-      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
-    deps:
-      - task: build-dependencies
-        vars:
-          BRANCH: '{{.BRANCH}}'
-    cmds:
-      - FIPS_MODE_MODULE_VERSION={{.FIPS_MODE_MODULE_VERSION}} TAG={{.TAG}}
-          docker compose -f observability.yml
-          -f server.yml
-          -f test_app_js.yml
-          -f test_app_go.yml build
-
-  docker-grafana-deploy:
-    desc: "Deploy or destroy Crypto Broker docker images with Grafana and the LGTM stack. Optionally specify an image tag with TAG=...)"
-    dir: deployments/docker/lgtm/
-    requires:
-      vars:
-        - name: CMD
-          enum: [up, down]
-    vars:
-      TAG: '{{.TAG | default "dev"}}'
-      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
-    cmds:
-      - FIPS_GODEBUG_VALUE={{.FIPS_GODEBUG_VALUE}} TAG={{.TAG}}
-          docker compose -f observability.yml
-          -f server.yml
-          -f test_app_js.yml
-          -f test_app_go.yml {{.CMD}}
+          CLIENT: '{{.KEY}}'
+      - echo "[✅] Cleanup complete"

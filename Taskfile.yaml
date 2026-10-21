@@ -3,6 +3,7 @@
 version: '3'
 
 includes:
+  openbao: taskfiles/openbao.yaml
   src:
     taskfile: taskfiles/sources.yaml
     vars:

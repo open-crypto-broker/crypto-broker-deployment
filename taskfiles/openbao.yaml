@@ -1,0 +1,206 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  OPENBAO_ADDRESS: http://127.0.0.1:8200
+  OPENBAO_TOKEN: dev-token
+  OPENBAO_MOUNT: keys
+  OPENBAO_KEY_ID: secret_1
+  OPENBAO_KEY_FIXTURE: testing/encryption/aes-256-gcm.env
+  OPENBAO_RUNTIME_DIR: /tmp/open-crypto-broker-openbao
+
+env:
+  BAO_ADDR: '{{.OPENBAO_ADDRESS}}'
+  BAO_TOKEN: '{{.OPENBAO_TOKEN}}'
+
+tasks:
+  setup:
+    desc: "Install and configure the local OpenBao development server"
+    silent: true
+    platforms: [darwin, linux]
+    preconditions:
+      - sh: |
+          if command -v bao >/dev/null 2>&1; then
+            exit 0
+          fi
+
+          case "$(uname -s)" in
+            Darwin) command -v brew >/dev/null 2>&1 ;;
+            Linux) command -v apt-get >/dev/null 2>&1 ;;
+            *) exit 1 ;;
+          esac
+        msg: "Homebrew is required on macOS; apt-get is required on Linux."
+      - sh: |
+          if [ "$(uname -s)" != "Linux" ] || command -v bao >/dev/null 2>&1 || [ "$(id -u)" -eq 0 ]; then
+            exit 0
+          fi
+          command -v sudo >/dev/null 2>&1
+        msg: "sudo is required to install OpenBao on Linux when not running as root."
+    cmds:
+      - |
+        set -eu
+        if command -v bao >/dev/null 2>&1; then
+          echo "[INFO] OpenBao is already installed: $(bao version)"
+          exit 0
+        fi
+
+        case "$(uname -s)" in
+          Darwin)
+            echo "[INFO] Installing OpenBao with Homebrew..."
+            brew install openbao
+            ;;
+          Linux)
+            if [ "$(id -u)" -eq 0 ]; then
+              SUDO=""
+            else
+              SUDO="sudo"
+            fi
+
+            echo "[INFO] Installing OpenBao from the official APT repository..."
+            $SUDO apt-get update
+            $SUDO apt-get install -y ca-certificates curl
+            $SUDO install -d -m 0755 /etc/apt/keyrings
+            curl --fail --silent --show-error --location \
+              https://openbao.org/assets/openbao-gpg-pub-20240618.asc \
+              | $SUDO tee /etc/apt/keyrings/openbao.asc >/dev/null
+            $SUDO chmod a+r /etc/apt/keyrings/openbao.asc
+            printf '%s\n' \
+              'Types: deb' \
+              'URIs: https://pkgs.openbao.org/deb/' \
+              'Suites: stable' \
+              'Components: main' \
+              'Signed-By: /etc/apt/keyrings/openbao.asc' \
+              | $SUDO tee /etc/apt/sources.list.d/openbao.sources >/dev/null
+            $SUDO apt-get update
+            $SUDO apt-get install -y openbao
+
+            if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet openbao; then
+              echo "[INFO] Stopping the package service so the local development server can use port 8200..."
+              $SUDO systemctl stop openbao
+            fi
+            ;;
+        esac
+      - |
+        set -eu
+        if curl --fail --silent --max-time 2 "{{.OPENBAO_ADDRESS}}/v1/sys/health" >/dev/null 2>&1; then
+          echo "[INFO] OpenBao is already running at {{.OPENBAO_ADDRESS}}"
+          exit 0
+        fi
+
+        mkdir -p "{{.OPENBAO_RUNTIME_DIR}}"
+        OPENBAO_BIN=$(command -v bao)
+        case "$(uname -s)" in
+          Darwin)
+            echo "[INFO] Starting an in-memory OpenBao development server with launchd..."
+            launchctl remove io.open-crypto-broker.openbao >/dev/null 2>&1 || true
+            launchctl submit \
+              -l io.open-crypto-broker.openbao \
+              -o "{{.OPENBAO_RUNTIME_DIR}}/openbao.log" \
+              -e "{{.OPENBAO_RUNTIME_DIR}}/openbao.log" \
+              -- "$OPENBAO_BIN" server \
+              -dev \
+              -dev-no-store-token \
+              -dev-listen-address=127.0.0.1:8200 \
+              -dev-root-token-id="{{.OPENBAO_TOKEN}}"
+            ;;
+          Linux)
+            echo "[INFO] Starting an in-memory OpenBao development server in the background..."
+            nohup "$OPENBAO_BIN" server \
+              -dev \
+              -dev-no-store-token \
+              -dev-listen-address=127.0.0.1:8200 \
+              -dev-root-token-id="{{.OPENBAO_TOKEN}}" \
+              >"{{.OPENBAO_RUNTIME_DIR}}/openbao.log" 2>&1 </dev/null &
+            echo "$!" >"{{.OPENBAO_RUNTIME_DIR}}/openbao.pid"
+            ;;
+        esac
+
+        ATTEMPT=0
+        while [ "$ATTEMPT" -lt 30 ]; do
+          if curl --fail --silent --max-time 2 "{{.OPENBAO_ADDRESS}}/v1/sys/health" >/dev/null 2>&1; then
+            echo "[INFO] OpenBao started successfully"
+            exit 0
+          fi
+          ATTEMPT=$((ATTEMPT + 1))
+          sleep 1
+        done
+
+        echo "[ERROR] Timed out waiting for OpenBao at {{.OPENBAO_ADDRESS}}"
+        tail -n 40 "{{.OPENBAO_RUNTIME_DIR}}/openbao.log"
+        exit 1
+      - |
+        set -eu
+        if ! bao token lookup >/dev/null 2>&1; then
+          echo "[ERROR] OpenBao is running, but token '{{.OPENBAO_TOKEN}}' was rejected."
+          echo "[ERROR] Stop the process using port 8200 and rerun this task."
+          exit 1
+        fi
+
+        MOUNT_DETAILS=$(bao secrets list -detailed | awk '$1 == "{{.OPENBAO_MOUNT}}/" { print }')
+        if [ -z "$MOUNT_DETAILS" ]; then
+          echo "[INFO] Enabling KV-v2 at {{.OPENBAO_MOUNT}}/..."
+          bao secrets enable -path="{{.OPENBAO_MOUNT}}" kv-v2
+        elif ! printf '%s\n' "$MOUNT_DETAILS" | grep -Fq 'map[version:2]'; then
+          echo "[INFO] Upgrading {{.OPENBAO_MOUNT}}/ to KV-v2..."
+          bao kv enable-versioning "{{.OPENBAO_MOUNT}}/"
+        else
+          echo "[INFO] KV-v2 is already enabled at {{.OPENBAO_MOUNT}}/"
+        fi
+
+        . "{{.OPENBAO_KEY_FIXTURE}}"
+        bao kv put \
+          -mount="{{.OPENBAO_MOUNT}}" \
+          "{{.OPENBAO_KEY_ID}}" \
+          key="$KEY" \
+          >/dev/null
+
+        ACTUAL_KEY=$(bao kv get \
+          -mount="{{.OPENBAO_MOUNT}}" \
+          -field=key \
+          "{{.OPENBAO_KEY_ID}}")
+        if [ "$ACTUAL_KEY" != "$KEY" ]; then
+          echo "[ERROR] Seeded OpenBao key does not match the AES-256-GCM fixture"
+          exit 1
+        fi
+
+        RESPONSE=$(curl --fail --silent \
+          --header "X-Vault-Token: {{.OPENBAO_TOKEN}}" \
+          "{{.OPENBAO_ADDRESS}}/v1/{{.OPENBAO_MOUNT}}/data/{{.OPENBAO_KEY_ID}}")
+        if ! printf '%s' "$RESPONSE" \
+          | tr -d '[:space:]' \
+          | grep -Fq "\"key\":\"$KEY\""; then
+          echo "[ERROR] The seeded key is not readable through the KV-v2 API path used by Crypto Broker"
+          exit 1
+        fi
+
+        echo "[OK] OpenBao is ready at {{.OPENBAO_ADDRESS}}"
+        echo "[OK] KV-v2 key {{.OPENBAO_MOUNT}}/{{.OPENBAO_KEY_ID}} matches the CLI known-answer fixture"
+        echo "[WARN] This fixed root token and in-memory server are for local development only."
+
+  status:
+    desc: "Show local OpenBao status and verify the Crypto Broker development key"
+    silent: true
+    platforms: [darwin, linux]
+    preconditions:
+      - sh: command -v bao >/dev/null 2>&1
+        msg: "OpenBao is not installed. Run 'task openbao:setup' first."
+    cmds:
+      - |
+        set -eu
+        bao status
+
+        . "{{.OPENBAO_KEY_FIXTURE}}"
+        ACTUAL_KEY=$(bao kv get \
+          -mount="{{.OPENBAO_MOUNT}}" \
+          -field=key \
+          "{{.OPENBAO_KEY_ID}}")
+        if [ "$ACTUAL_KEY" != "$KEY" ]; then
+          echo "[ERROR] {{.OPENBAO_MOUNT}}/{{.OPENBAO_KEY_ID}} does not match the CLI known-answer fixture"
+          exit 1
+        fi
+
+        echo "[OK] KV-v2 key {{.OPENBAO_MOUNT}}/{{.OPENBAO_KEY_ID}} is configured for Crypto Broker"
+        if [ -f "{{.OPENBAO_RUNTIME_DIR}}/openbao.log" ]; then
+          echo "[INFO] Log: {{.OPENBAO_RUNTIME_DIR}}/openbao.log"
+        fi

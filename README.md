@@ -23,6 +23,35 @@ task -l
 
 ## Deployment
 
+### Local OpenBao development setup
+
+On macOS or Linux, install and start an in-memory OpenBao development server,
+enable the `keys/` KV-v2 mount, and seed `secret_1` with the AES-256-GCM
+known-answer key. macOS uses Homebrew and Linux uses APT:
+
+```bash
+task openbao:setup
+```
+
+Check that OpenBao is running and that the development key is readable:
+
+```bash
+task openbao:status
+```
+
+The setup matches the local Crypto Broker server configuration in
+`configs/openbao.yaml`: `http://127.0.0.1:8200`, token `dev-token`, mount
+`keys`, and key ID `secret_1`. After setup, run `task run` in
+`crypto-broker-server`, then run these known-answer commands in
+`crypto-broker-cli-go`:
+
+```bash
+task kms:test-encrypt-data
+task kms:test-decrypt-data
+```
+
+This setup uses a fixed root token and an in-memory ONLY OpenBao server.
+
 ### Cloud Foundry
 
 #### Cloud Foundry Setup

@@ -8,17 +8,100 @@ See the [FIPS deployment testing guide](doc/fips.md) to build the server
 with a selected Go FIPS module and enforce strict mode on Cloud Foundry,
 Kubernetes, or Docker Compose.
 
-## Cross Compilation and Branch Support
+## Introduction
 
-For several tasks it is possible to specify for which Operating System (OS) and Architecture (ARCH) the software shall be build.
+The workflow for deploying and testing the Crypto Broker involves several steps:
+
+1. Manage the necessary source repositories: `task src:<repos>`
+2. Build the server and client binaries: `task build:<component>`.
+3. Deploy the binaries on the desired platform: `task deploy:<platform>`.
+4. Run end-to-end tests to verify the deployment and client interactions: `task test:<commands>`.
+
+## Cross Compilation
+
+For several tasks it is possible to specify for which Operating System (GOOS) and Architecture (GOARCH) the software shall be build.
 For a list of supported operating systems and architectures refer to the [Golang variables](https://github.com/golang/go/blob/master/src/internal/syslist/syslist.go).
-Additionally, for some tasks a BRANCH variable can be specified in order to build the software from a specific branch.
-For a list of tasks which support these options, issue the task overview with:
+
+For example to build the server binary for MacOS on ARM64, the following can be executed:
 
 ```bash
-task
-# or
-task -l
+GOOS=darwin GOARCH=arm64 task build:server
+```
+
+## Source Repositories
+
+The server and the CLI clients are built from clones of their own repositories, checked out next to this one.
+The builds are delegated to each repository's own `build` task, so the build commands are defined once, in the repository that owns them.
+
+Managing those sources is a separate, explicit step:
+
+```bash
+# Clone a repository that is missing (safe to re-run, does nothing if already present)
+task src:clone:*
+
+# Pull the latest state of the branch
+task src:update:*
+
+# Delete a repository that is no longer needed
+task src:delete:*
+
+# Show which branch, commit and tag each repository is on
+task src:status
+```
+
+Where `*` can be one of: `server`, `cli-go`, or `cli-js`.
+
+Day-to-day work should stay on `main` so that breakage between server, client and CLI shows up immediately.
+To verify a release instead, pin a single repository to a tag:
+
+```bash
+# Pin the server repository to a specific tag
+task src:pin:server REF=v0.5.0
+```
+
+`task src:update:*` returns a pinned repository to the tip of its branch.
+
+> [!IMPORTANT]
+> These clones are disposable build inputs. `task src:update:*` discards local changes without asking, so do not develop inside them.
+
+For a first-time setup, `task initial-setup` clones every repository and builds the server and both clients in one run.
+
+## End-to-End (E2E) Testing
+
+The `Taskfile.yaml` file specifies, besides other tasks, end-to-end tests.
+These end-to-end tests build the different binaries, starts them and then perform Known-Answer-Tests.
+With these tests the complete message flow is visible from start to end.
+Missing repositories are cloned automatically; existing ones are reused as-is, so run `task src:update:*` first when you want to test the latest state.
+
+### Available Test Commands
+
+A unified test command can be used to run specific E2E tests:
+
+```bash
+task test:clients:*
+```
+
+Where `*` can be one of: `health`, `benchmark`, `hash-data`, `encrypt-data`, or `sign-certificate`.
+
+The following command performs all E2E tests with all combinations of clients and the server:
+
+```bash
+task test:all
+```
+
+These E2E tests are also executed in GitHub Actions.
+
+### Clients Compatibility Matrix
+
+The signing test command can build a compatibility matrix for each client, showing which profile supports which key-sizes for CSRs and also for the test Certificate Authority.
+The command can take some time, since its complexity is O(n<sup>4</sup>): for each client, each profile will be tested and for each profile each CSR and for each CSR the different CA certificates will be tested.
+The results are automatically gathered and are shown in a [table in the testing folder](testing/compatibility-matrix.md).
+
+By default, the output is displayed on the console (stdout).
+To generate a compatibility matrix file, set the `CREATE_COMP_MATRIX` parameter to `true`:
+
+```bash
+task test:clients:sign-certificate CREATE_COMP_MATRIX=true
 ```
 
 ## Deployment
@@ -142,49 +225,6 @@ Quick notes:
 
 * Grafana UI: ```http://localhost:3000``` (default login: admin / admin — a pre-built dashboard covering server metrics, traces, and logs is included)
 * Jaeger UI: ```http://localhost:16686``` — browse traces and services
-
-## End-to-End (E2E) Testing
-
-The `Taskfile.yaml` file specifies, besides other tasks, end-to-end tests.
-These end-to-end tests clone the different repositories, builds them, starts them and then perform Known-Answer-Tests for hashing or signing a certificate.
-With these tests the complete message flow is visible from start to end.
-
-### Available Test Commands
-
-A unified test command can be used to run specific E2E tests:
-
-```bash
-task test:client CMD=<command>
-```
-
-Where `<command>` can be one of: `health`, `benchmark`, `hash-data`, `encrypt-data`, or `sign-certificate`.
-
-The following command performs all E2E tests with all combinations of clients and the server:
-
-```bash
-task test:all
-```
-
-These E2E tests are also executed in GitHub Actions.
-During these E2E tests the repositories are built and still available after testing.
-In order to clean everything up, the following task can be used:
-
-```bash
-task delete-all
-```
-
-### Clients Compatibility Matrix
-
-The signing test command can build a compatibility matrix for each client, showing which profile supports which key-sizes for CSRs and also for the test Certificate Authority.
-The command can take some time, since its complexity is O(n<sup>4</sup>): for each client, each profile will be tested and for each profile each CSR and for each CSR the different CA certificates will be tested.
-The results are automatically gathered and are shown in a [table in the testing folder](testing/compatibility-matrix.md).
-
-By default, the output is displayed on the console (stdout).
-To generate a compatibility matrix file, set the `CREATE_COMP_MATRIX` parameter to `true`:
-
-```bash
-task test:client CMD=sign-certificate CREATE_COMP_MATRIX=true
-```
 
 ## Support, Feedback, Contributing
 

@@ -3,7 +3,13 @@
 version: '3'
 
 vars:
-  # OpenTelemetry Collector configuration file path
+  # Test apps for deployment
+  APPS: [cli-go, cli-js]
+  # Docker compose commands
+  CMDS: [build, up, down]
+  # Docker deployment targets
+  TARGETS: [grafana, jaeger]
+  # OpenTelemetry Collector configuration
   OTEL_VERSION: 0.145.0
   OTEL_DIST: otelcol
   OTEL_URL: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v{{.OTEL_VERSION}}/{{.OTEL_DIST}}_{{.OTEL_VERSION}}_linux_amd64.tar.gz
@@ -11,96 +17,91 @@ vars:
 
 tasks:
   ################# Cloud Foundry Deployment ####################
-  # Public tasks for Cloud Foundry deployment
-  # The deployment is done over several stages.
-  # First, the old deployment folder is deleted.
-  # Second, the Crypto Broker server is build.
-  # Third, the specified client is build.
-  # Fourth, the deployment repo is created.
-  # Fifth, the necessary files from the Crypto Broker are copied to the deployment folder.
-  # Sixth, the necessary files from the client are copied to the deployment folder.
-  # Seventh, the cf CLI is invoked and the app is pushed to Cloud Foundry.
-  cf-push:
-    desc: "Deploy to Cloud Foundry the Crypto Broker server and client specified with CLIENT='', values are 'go', 'js'. A branch can be specified with BRANCH='', values: 'main' (default), 'dev'"
+  cf-push:*:
+    desc: "Deploy to Cloud Foundry the Crypto Broker server and the specified client"
+    preconditions:
+      - sh: test -d crypto-broker-server/.git
+        msg: "Crypto Broker server repo is not cloned and built — run 'task src:clone:server' and 'task build:server' first."
+      - sh: test -d crypto-broker-{{.APP}}/.git
+        msg: "Specified repo is not cloned and built — run 'task src:clone:*' and 'task build:*' first."
     vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS | default "linux"}}'
-      ARCH: '{{.ARCH | default "amd64"}}'
-      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
-      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
+      APP: '{{index .MATCH 0}}'
+      GODEBUG: '{{.GODEBUG | default "fips140=off"}}'
     requires:
       vars:
-        - name: CLIENT
-          enum: [go, js]
+        - name: APP
+          enum:
+            ref: .APPS
     cmds:
       - task: delete-deployment-folder
         vars:
-          CLIENT: '{{.CLIENT}}'
-      - task: :build-server
-        vars:
-          BRANCH: '{{.BRANCH}}'
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-          FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION}}'
-      - task: :build-cli
-        vars:
-          CLIENT: '{{.CLIENT}}'
-          BRANCH: '{{.BRANCH}}'
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
+          APP: '{{.APP}}'
       - task: create-deployment-folder
         vars:
-          CLIENT: '{{.CLIENT}}'
+          APP: '{{.APP}}'
       - task: copy-crypto-broker-server
         vars:
-          CLIENT: '{{.CLIENT}}'
+          APP: '{{.APP}}'
       - task: copy-test-certificates
         vars:
-          CLIENT: '{{.CLIENT}}'
-      - task: copy-{{.CLIENT}}-cli
+          APP: '{{.APP}}'
+      - task: copy:{{.APP}}
+        vars:
+          APP: '{{.APP}}'
       - task: copy-otel-collector
+        vars:
+          APP: '{{.APP}}'
       - cf push --random-route
-          --var fips_godebug_value={{.FIPS_GODEBUG_VALUE}}
-          -f deployments/cloud-foundry/{{.CLIENT}}/manifest.yaml
-          -p deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+        --var go_debug={{.GODEBUG}}
+        -f deployments/cloud-foundry/{{.APP}}/manifest.yaml
+        -p deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment/
 
-  cf-delete:
-    desc: "Delete the deployment folders and also on Cloud Foundry the deployment of Crypto Broker server and the specified client with CLIENT='', values are 'go', 'js'"
+  cf-delete:*:
+    desc: "Delete the deployment folders and also on Cloud Foundry the deployment of Crypto Broker server and the specified client"
+    vars:
+      APP: '{{index .MATCH 0}}'
     requires:
       vars:
-        - name: CLIENT
-          enum: [go, js]
+        - name: APP
+          enum:
+            ref: .APPS
     cmds:
         - task: delete-deployment-folder
           vars:
-            CLIENT: '{{.CLIENT}}'
-        - cf delete -r -f crypto-broker-{{.CLIENT}}-cli
+            APP: '{{.APP}}'
+        - cf delete -r -f crypto-broker-{{.APP}}
 
   # Internal tasks for deployment to Cloud Foundry
   create-deployment-folder:
     desc: "Create the deployment folder for Cloud Foundry"
     internal: true
     cmds:
-      - mkdir deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment
+      - mkdir deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment
 
   delete-deployment-folder:
     desc: "Delete the deployment folder for Cloud Foundry"
     internal: true
     cmds:
-      - rm -rf deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment
+      - rm -rf deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment
 
   copy-crypto-broker-server:
     desc: "Copy Crypto Broker server files to deployment folder"
     internal: true
     cmds:
-      - cp crypto-broker-server/bin/cryptobroker-server deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
-      - cp testing/profiles/Profiles.yaml deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+      - cp crypto-broker-server/bin/crypto-broker-server deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment/
+      - cp testing/profiles/Profiles.yaml deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment/
+
+  copy:*:
+    desc: "Copy the binary client files for Cloud Foundry deployment"
+    internal: true
+    cmds:
+      - cp crypto-broker-{{.APP}}/bin/* deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment/
 
   copy-test-certificates:
     desc: "Copy test CSR and test CA certificate and CA private key to Cloud Foundry"
     internal: true
     cmds:
-      - cp -r testing/certificates deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
+      - cp -r testing/certificates deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment/
 
   download-otel-collector:
     desc: "Download and extract the OpenTelemetry Collector binary"
@@ -118,41 +119,8 @@ tasks:
     deps: [download-otel-collector]
     internal: true
     cmds:
-      - cp deployments/cloud-foundry/otel-collector/bin/otelcol deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
-      - cp deployments/cloud-foundry/otel-collector/otel-config.yaml deployments/cloud-foundry/{{.CLIENT}}/{{.CLIENT}}-deployment/
-
-  # Go specific task
-  copy-go-cli:
-    desc: "Copy the necessary Go client files for Cloud Foundry deployment"
-    internal: true
-    cmds:
-      - cp crypto-broker-cli-go/bin/go-client-cli deployments/cloud-foundry/go/go-deployment
-      - cp crypto-broker-cli-go/bin/stress-test deployments/cloud-foundry/go/go-deployment
-
-  cf-stress-test:
-    desc: "Run the CLI-Go stress test in the deployed Cloud Foundry app"
-    vars:
-      CONCURRENT: '{{.CONCURRENT | default "100"}}'
-      NUM: '{{.NUM | default "100"}}'
-      COUNT: '{{.COUNT | default "1"}}'
-    cmds:
-      - cf ssh crypto-broker-go-cli -c
-          "STRESS_BENCHMARK_ENABLED=true
-          STRESS_CONCURRENT={{.CONCURRENT}}
-          STRESS_COUNT={{.NUM}}
-          ./app/stress-test
-          -test.run=^$
-          -test.bench=^BenchmarkStressHashConcurrentConnections$
-          -test.benchmem
-          -test.benchtime=1x
-          -test.count={{.COUNT}}"
-
-  # Node.js specific tasks
-  copy-js-cli:
-    desc: "Copy the Node.js client binary for Cloud Foundry deployment"
-    internal: true
-    cmds:
-      - cp crypto-broker-cli-js/bin/js-client-cli deployments/cloud-foundry/js/js-deployment/
+      - cp deployments/cloud-foundry/otel-collector/bin/otelcol deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment/
+      - cp deployments/cloud-foundry/otel-collector/otel-config.yaml deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment/
 
   ################# Kubernetes Deployment ####################
   kube-up:
@@ -211,14 +179,12 @@ tasks:
   kube-prepare-stress-test:
     desc: "Build the Kubernetes stress-test image and load it into minikube"
     vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
       ARCH: '{{.ARCH | default "amd64"}}'
       TAG: '{{.TAG | default "dev"}}'
     cmds:
       - task: :build-cli
         vars:
           CLIENT: go
-          BRANCH: '{{.BRANCH}}'
           OS: linux
           ARCH: '{{.ARCH}}'
       - docker build
@@ -248,72 +214,25 @@ tasks:
           -test.count={{.COUNT}}
 
   ################# Docker-Compose Deployment ####################
-  docker-jaeger-build:
-    desc: "Build Crypto Broker docker images with Jaeger. Optionally specify an image tag with TAG=...)"
-    dir: deployments/docker/jaeger/
+  docker:*:*:
+    desc: "Build, deploy or destroy Crypto Broker docker images for the specified target. Optionally set an image tag with TAG=...)"
+    dir: deployments/docker/{{.TARGET}}/
     vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
+      TARGET: '{{index .MATCH 0}}'
+      CMD: '{{index .MATCH 1}}'
       TAG: '{{.TAG | default "dev"}}'
-      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
-    deps:
-      - task: :build-dependencies
-        vars:
-          BRANCH: '{{.BRANCH}}'
-    cmds:
-      - FIPS_MODE_MODULE_VERSION={{.FIPS_MODE_MODULE_VERSION}} TAG={{.TAG}}
-          docker compose -f jaeger.yml
-          -f server.yml
-          -f test_app_js.yml
-          -f test_app_go.yml build
-
-  docker-jaeger-deploy:
-    desc: "Deploy or destroy Crypto Broker docker images with Jaeger. Optionally specify an image tag with TAG=...)"
-    dir: deployments/docker/jaeger/
     requires:
       vars:
+        - name: TARGET
+          enum:
+            ref: .TARGETS
         - name: CMD
-          enum: [up, down]
-    vars:
-      TAG: '{{.TAG | default "dev"}}'
-      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
+          enum:
+            ref: .CMDS
+    dotenv: ["../../../crypto-broker-server/.env"]
     cmds:
-      - FIPS_GODEBUG_VALUE={{.FIPS_GODEBUG_VALUE}} TAG={{.TAG}}
-          docker compose -f jaeger.yml
-          -f server.yml
-          -f test_app_js.yml
-          -f test_app_go.yml {{.CMD}}
-
-  docker-grafana-build:
-    desc: "Build Crypto Broker docker images with Grafana and the LGTM stack. Optionally specify an image tag with TAG=...)"
-    dir: deployments/docker/lgtm/
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      TAG: '{{.TAG | default "dev"}}'
-      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
-    deps:
-      - task: :build-dependencies
-        vars:
-          BRANCH: '{{.BRANCH}}'
-    cmds:
-      - FIPS_MODE_MODULE_VERSION={{.FIPS_MODE_MODULE_VERSION}} TAG={{.TAG}}
-          docker compose -f observability.yml
-          -f server.yml
-          -f test_app_js.yml
-          -f test_app_go.yml build
-
-  docker-grafana-deploy:
-    desc: "Deploy or destroy Crypto Broker docker images with Grafana and the LGTM stack. Optionally specify an image tag with TAG=...)"
-    dir: deployments/docker/lgtm/
-    requires:
-      vars:
-        - name: CMD
-          enum: [up, down]
-    vars:
-      TAG: '{{.TAG | default "dev"}}'
-      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
-    cmds:
-      - FIPS_GODEBUG_VALUE={{.FIPS_GODEBUG_VALUE}} TAG={{.TAG}}
-          docker compose -f observability.yml
-          -f server.yml
-          -f test_app_js.yml
-          -f test_app_go.yml {{.CMD}}
+      - TAG={{.TAG}}
+          docker compose -f {{.TARGET}}.yaml
+          -f crypto-broker-server.yaml
+          -f test_app_js.yaml
+          -f test_app_go.yaml {{.CMD}}

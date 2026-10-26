@@ -23,6 +23,9 @@ task -l
 
 ## Deployment
 
+See the [OpenBao KMS testing guide](doc/kms-openbao.md) to run OpenBao locally,
+add test keys, configure the server, and test encryption and decryption by key ID.
+
 ### Cloud Foundry
 
 #### Cloud Foundry Setup

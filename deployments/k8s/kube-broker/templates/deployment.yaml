@@ -26,25 +26,6 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-        {{- if .Values.cliStressApp.enabled }}
-        # CLI-Go stress-test runner (replaces the functional test clients)
-        - name: stress-test
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.cliStressApp.image }}:{{ .Values.imageTag }}"
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
-          env:
-            - name: STRESS_BENCHMARK_ENABLED
-              value: "true"
-            - name: STRESS_CONCURRENT
-              value: {{ .Values.cliStressApp.concurrent | quote }}
-            - name: STRESS_COUNT
-              value: {{ .Values.cliStressApp.num | quote }}
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          volumeMounts:
-            {{- include "kube-broker.volumeMounts" . | nindent 12 }}
-        {{- else }}
         # CLI-test apps (functional test clients)
         {{- range .Values.cliTestApps }}
         - name: {{ .name }}
@@ -61,7 +42,6 @@ spec:
           volumeMounts:
             {{- include "kube-broker.volumeMounts" $ | nindent 12 }}
         {{- end }}
-        {{- end }}
 
         # Crypto-broker server (the broker)
         - name: {{ .Values.server.name }}
@@ -74,7 +54,7 @@ spec:
                 name: {{ include "kube-broker.fullname" . }}-serverconfig
           env:
             - name: GODEBUG
-              value: {{ .Values.server.godebug | quote }}
+              value: {{ .Values.server.goDebug | quote }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:

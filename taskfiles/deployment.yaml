@@ -6,9 +6,9 @@ vars:
   # Test apps for deployment
   APPS: [cli-go, cli-js]
   # Docker compose commands
-  CMDS: [build, up, down]
+  DOCKER_CMDS: [build, up, down]
   # Docker deployment targets
-  TARGETS: [grafana, jaeger]
+  DOCKER_TARGETS: [grafana, jaeger]
   # OpenTelemetry Collector configuration
   OTEL_VERSION: 0.145.0
   OTEL_DIST: otelcol
@@ -106,6 +106,8 @@ tasks:
   download-otel-collector:
     desc: "Download and extract the OpenTelemetry Collector binary"
     internal: true
+    status:
+      - test -f "deployments/cloud-foundry/otel-collector/bin/otelcol"
     cmds:
       - curl -L {{.OTEL_URL}} -o otelcol.tar.gz
       - echo "{{.OTEL_SHA256}}  otelcol.tar.gz" | sha256sum -c -
@@ -124,94 +126,32 @@ tasks:
 
   ################# Kubernetes Deployment ####################
   kube-up:
-    desc: "Deploy the Kubernetes Crypto Broker: load images into minikube, then deploy the chart"
+    desc: "Deploys the Kubernetes Crypto Broker"
+    dir: deployments/k8s/kube-broker/
     vars:
       TAG: '{{.TAG | default "dev"}}'
+    dotenv: ["../../../crypto-broker-server/.env"]
     cmds:
-      - task: minikube-images
-        vars:
-          TAG: '{{.TAG}}'
-      - task: kube-deploy
-        vars:
-          TAG: '{{.TAG}}'
-          STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
-          STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
-          STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
-          FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
+      - helm upgrade --install -f Chart.yaml -f values.yaml
+          --set imageTag="{{.TAG}}"
+          --set server.goDebug="$FIPS_GODEBUG_VALUE"
+          crypto-broker --namespace crypto-broker --create-namespace .
 
   kube-down:
     desc: "Destroys the Kubernetes Crypto Broker deployment"
     cmds:
       - helm uninstall crypto-broker -n crypto-broker
 
-  # Internal Kubernetes Deployment Tasks
+  # Load Docker images into Minikube
   minikube-images:
     desc: "Load the docker images into minikube"
-    internal: true
     vars:
       TAG: '{{.TAG | default "dev"}}'
     cmds:
       - minikube image load
-          ghcr.io/open-crypto-broker/test_app_js:{{.TAG}}
-          ghcr.io/open-crypto-broker/test_app_go:{{.TAG}}
           ghcr.io/open-crypto-broker/server:{{.TAG}}
-
-  kube-deploy:
-    desc: "Deploys the Kubernetes Crypto Broker"
-    internal: true
-    dir: deployments/k8s/kube-broker/
-    vars:
-      TAG: '{{.TAG | default "dev"}}'
-      STRESS_ENABLED: '{{.STRESS_ENABLED | default "false"}}'
-      STRESS_CONCURRENT: '{{.STRESS_CONCURRENT | default "100"}}'
-      STRESS_NUM: '{{.STRESS_NUM | default "100"}}'
-      FIPS_GODEBUG_VALUE: '{{.FIPS_GODEBUG_VALUE | default "fips140=off"}}'
-    cmds:
-      - helm upgrade --install -f Chart.yaml -f values.yaml
-          --set imageTag="{{.TAG}}"
-          --set cliStressApp.enabled="{{.STRESS_ENABLED}}"
-          --set cliStressApp.concurrent="{{.STRESS_CONCURRENT}}"
-          --set cliStressApp.num="{{.STRESS_NUM}}"
-          --set-string server.godebug="{{.FIPS_GODEBUG_VALUE}}"
-          crypto-broker --namespace crypto-broker --create-namespace .
-
-  # Kubernetes Stress Test Tasks
-  kube-prepare-stress-test:
-    desc: "Build the Kubernetes stress-test image and load it into minikube"
-    vars:
-      ARCH: '{{.ARCH | default "amd64"}}'
-      TAG: '{{.TAG | default "dev"}}'
-    cmds:
-      - task: :build-cli
-        vars:
-          CLIENT: go
-          OS: linux
-          ARCH: '{{.ARCH}}'
-      - docker build
-          -f deployments/k8s/kube-broker/build/stress-client.Dockerfile
-          -t ghcr.io/open-crypto-broker/stress_test:{{.TAG}} .
-      - minikube image load ghcr.io/open-crypto-broker/stress_test:{{.TAG}}
-
-  kube-run-stress-test:
-    desc: "Run the CLI-Go stress test in the deployed Kubernetes pod"
-    vars:
-      COUNT: '{{.COUNT | default "1"}}'
-    preconditions:
-      - sh: minikube status --format '{{`{{.Host}}`}}' | grep -q Running
-        msg: "minikube is not running — start it with 'minikube start'."
-      - sh: kubectl get deployment/crypto-broker-kube-broker -n crypto-broker
-        msg: "Deployment not found — run 'task kube STRESS_ENABLED=true' first."
-    cmds:
-      - kubectl exec deployment/crypto-broker-kube-broker
-          -n crypto-broker
-          -c stress-test
-          --
-          /app/stress-test
-          -test.run=^$
-          -test.bench=^BenchmarkStressHashConcurrentConnections$
-          -test.benchmem
-          -test.benchtime=1x
-          -test.count={{.COUNT}}
+          ghcr.io/open-crypto-broker/test_app_go:{{.TAG}}
+          ghcr.io/open-crypto-broker/test_app_js:{{.TAG}}
 
   ################# Docker-Compose Deployment ####################
   docker:*:*:
@@ -225,10 +165,10 @@ tasks:
       vars:
         - name: TARGET
           enum:
-            ref: .TARGETS
+            ref: .DOCKER_TARGETS
         - name: CMD
           enum:
-            ref: .CMDS
+            ref: .DOCKER_CMDS
     dotenv: ["../../../crypto-broker-server/.env"]
     cmds:
       - TAG={{.TAG}}

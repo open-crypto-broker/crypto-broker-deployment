@@ -3,6 +3,22 @@
 version: '3'
 
 includes:
+  src:
+    taskfile: taskfiles/sources.yaml
+    vars:
+      REPOS:
+        ref: .REPOS
+  build:
+    taskfile: taskfiles/build.yaml
+    flatten: true # prevent to have "build:build:<task>" task names
+    vars:
+      REPOS:
+        ref: .REPOS
+  deploy:
+    taskfile: taskfiles/deployment.yaml
+    vars:
+      REPOS:
+        ref: .REPOS
   test:
     taskfile: taskfiles/testing.yaml
     vars:
@@ -10,18 +26,17 @@ includes:
         ref: .CLIENTS
       GREP_CMD:
         ref: .GREP_CMD
-  deploy: taskfiles/deployment.yaml
 
 vars:
+  # Repo names for the source repositories
+  REPOS: [server, cli-go, cli-js]
   # Map of clients for each programming language and the path to its executable
   CLIENTS:
     map:
       go:
         cmd: "./crypto-broker-cli-go/bin/go-client-cli"
-        env: ".env.cli-go"
       js:
         cmd: "./crypto-broker-cli-js/bin/js-client-cli"
-        env: ".env.cli-js"
   # GNU grep support depending on OS
   GREP_CMD:
     sh: |
@@ -31,13 +46,12 @@ vars:
       esac
 
 tasks:
-  ################# Utility Tasks ####################
+  ################# Root Utility Tasks ####################
   default:
     desc: "Display all available tasks with descriptions"
     cmds:
       - task -l
 
-  # Check if all necessary cli tools are installed
   check-prerequisites:
     desc: "Verify all required tools are available (go, node, npm, git, cf, docker)"
     silent: true
@@ -59,170 +73,12 @@ tasks:
         fi
         echo "[✅] All prerequisites found"
 
-  # Tasks for installing/removing GNU grep on macOS
-  macos-install-gnu-grep:
-    desc: "Install GNU grep on macOS"
-    platforms: ["darwin"]
-    cmds:
-      - brew install grep
-
-  macos-remove-gnu-grep:
-    desc: "Remove GNU grep from macOS"
-    platforms: ["darwin"]
-    cmds:
-      - brew uninstall grep
-
-  ################# Build Crypto Broker CLI Clients ####################
-  # Public build task for the CLI test-clients.
-  # At first, an already existing cloned repo will be deleted.
-  # Then the repo will be cloned.
-  # After that the CLI test-client will be build, language specific tasks are executed.
-  build-cli:
-    desc: "Build a client depending on the CLI argument with CLIENT='', values: 'go', 'js'. Also the branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
+  initial-setup:
+    desc: "First-time setup: clone all source repos and build the server and both CLI clients"
     vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS}}'
-      ARCH: '{{.ARCH}}'
-    requires:
-      vars:
-        - name: CLIENT
-          enum: [go, js]
+      REPOS:
+        ref: .REPOS
     cmds:
-      - echo "Building {{.CLIENT}} client from branch '{{.BRANCH}}'"
-      - task: delete-cli
-        vars:
-          CLIENT: '{{.CLIENT}}'
-      - task: clone-cli
-        vars:
-          CLIENT: '{{.CLIENT}}'
-          BRANCH: '{{.BRANCH}}'
-      - task: build-cli-{{.CLIENT}}
-        vars:
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-
-  # Delete the specified cli client
-  delete-cli:
-    desc: "Delete cli test app source folder depending on the CLI argument with CLIENT='', values: 'go', 'js'"
-    requires:
-      vars:
-        - name: CLIENT
-          enum: [go, js]
-    cmds:
-      - rm -rf crypto-broker-cli-{{.CLIENT}}
-
-  # Internal tasks for building specified CLI test-client
-  clone-cli:
-    internal: true
-    desc: "Clone test app repository"
-    cmds:
-      # clone the client using a specific branch
-      - git clone -b {{.BRANCH}} --single-branch https://github.com/open-crypto-broker/crypto-broker-cli-{{.CLIENT}}.git
-
-  build-cli-go:
-    internal: true
-    dir: crypto-broker-cli-go
-    cmds:
-      - GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ./bin/go-client-cli main.go
-      - CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go test -c -o ./bin/stress-test ./internal/command
-
-  build-cli-js:
-    internal: true
-    dir: crypto-broker-cli-js/
-    cmds:
-      - task build
-
-  ################# Build Crypto Broker Server ####################
-  # Public build task for Crypto Broker server.
-  # At first delete the source folder if it exists.
-  # Then the repo will be cloned and the submodules initialized.
-  # After that the Crypto Broker will be build.
-  build-server:
-    desc: "Clone and build Crypto Broker server. The branch can be specified with BRANCH='', values: 'main' (default), 'dev'. The OS and ARCH can also be specified."
-    vars:
-      BRANCH: '{{.BRANCH | default "main"}}'
-      OS: '{{.OS}}'
-      ARCH: '{{.ARCH}}'
-      FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
-    cmds:
-      - task: delete-server
-      - task: clone-server
-        vars:
-          BRANCH: '{{.BRANCH}}'
-      - task: build-server-internal
-        vars:
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-          FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION}}'
-
-  delete-server:
-    desc: "Delete Crypto Broker server source folder"
-    cmds:
-      - rm -rf crypto-broker-server
-
-  # Internal tasks for building Crypto Broker server
-  clone-server:
-    desc: "Clone Crypto Broker server"
-    internal: true
-    cmds:
-      - git clone -b {{.BRANCH}} --single-branch https://github.com/open-crypto-broker/crypto-broker-server.git
-      - task: init-protobuf-server
-
-  init-protobuf-server:
-    internal: true
-    dir: crypto-broker-server/protobuf
-    cmds:
-      - git submodule update --init
-
-  build-server-internal:
-    internal: true
-    status:
-      - test -d crypto-broker-server
-    dir: crypto-broker-server
-    cmds:
-      - GOFIPS140={{.FIPS_MODE_MODULE_VERSION}} GOOS={{.OS}} GOARCH={{.ARCH}}
-          go build -o bin/cryptobroker-server cmd/server/server.go
-      - |
-        if [ "{{.FIPS_MODE_MODULE_VERSION}}" != "off" ]; then
-          go version -m bin/cryptobroker-server \
-            | grep -F "GOFIPS140={{.FIPS_MODE_MODULE_VERSION}}"
-        fi
-
-  # Build Crypto Broker server and the clients for end-to-end tests
-  build-dependencies:
-    desc: "Build all dependencies: clients and server, depending on the specified branch"
-    internal: true
-    vars:
-      ref: .CLIENTS
-    cmds:
-      - task: build-server
-        vars:
-          BRANCH: '{{.BRANCH}}'
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-          FIPS_MODE_MODULE_VERSION: '{{.FIPS_MODE_MODULE_VERSION | default "off"}}'
-      - for: { var: CLIENTS }
-        task: build-cli
-        vars:
-          CLIENT: '{{.KEY}}'
-          CLIENT_PATH: '{{.ITEM}}'
-          BRANCH: '{{.BRANCH}}'
-          OS: '{{.OS}}'
-          ARCH: '{{.ARCH}}'
-
-  ################# Cleanup Tasks ####################
-  delete-all:
-    desc: "Delete the Crypto Broker server and client source folders, the deployment folders, and also the deployment on Cloud Foundry"
-    vars:
-      ref: .CLIENTS
-    cmds:
-      - task: delete-server
-      - for: { var: CLIENTS }
-        task: delete-cli
-        vars:
-          CLIENT: '{{.KEY}}'
-      - for: { var: CLIENTS }
-        task: test:cf-delete
-        vars:
-          CLIENT: '{{.KEY}}'
-      - echo "[✅] Cleanup complete"
+      - for: { var: REPOS }
+        task: src:clone:{{.ITEM}}
+      - task: build:all

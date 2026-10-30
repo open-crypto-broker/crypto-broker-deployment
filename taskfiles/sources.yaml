@@ -1,0 +1,106 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GIT_BASE_URL: https://github.com/open-crypto-broker
+
+tasks:
+  ################# Source Repository Lifecycle ####################
+  # These clones are disposable build inputs for end-to-end tests and deployment targets.
+  # Do not develop inside them: 'update' and 'reclone' discard local changes without asking.
+  clone:*:
+    desc: "Clone the source repos [server, cli-go, cli-js]. Select a branch with BRANCH='' (default 'main')"
+    vars:
+      REPO: '{{index .MATCH 0}}'
+      BRANCH: '{{.BRANCH | default "main"}}'
+    requires:
+      vars:
+        - name: REPO
+          enum:
+            ref: .REPOS
+    cmds:
+      - git clone --filter=blob:none -b {{.BRANCH}} --single-branch {{.GIT_BASE_URL}}/crypto-broker-{{.REPO}}.git crypto-broker-{{.REPO}}
+      # Create the .env file if it doesn't exist
+      - test -f "crypto-broker-{{.REPO}}/.env" || task copy-env
+
+  update:*:
+    desc: "Fetch and hard-reset the source repos to the tip of BRANCH='' (default 'main'). Discards local changes and removes any pin."
+    vars:
+      REPO: '{{index .MATCH 0}}'
+      BRANCH: '{{.BRANCH | default "main"}}'
+    requires:
+      vars:
+        - name: REPO
+          enum:
+            ref: .REPOS
+    preconditions:
+      - sh: test -d crypto-broker-{{.REPO}}/.git
+        msg: "Specified repo is not cloned — run 'task src:clone:*' first."
+    cmds:
+      - git -C crypto-broker-{{.REPO}} fetch --filter=blob:none --tags --force origin
+          "+refs/heads/{{.BRANCH}}:refs/remotes/origin/{{.BRANCH}}"
+      - git -C crypto-broker-{{.REPO}} checkout --force -B {{.BRANCH}} origin/{{.BRANCH}}
+      - git -C crypto-broker-{{.REPO}} reset --hard origin/{{.BRANCH}}
+
+  pin:*:
+    desc: "Check out a release tag or commit in a single source repo, e.g. REF=v0.5.0. Use 'task src:update' to return to the branch tip."
+    vars:
+      REPO: '{{index .MATCH 0}}'
+    requires:
+      vars:
+        - name: REPO
+          enum:
+            ref: .REPOS
+        - REF
+    preconditions:
+      - sh: test -d crypto-broker-{{.REPO}}/.git
+        msg: "Specified repo is not cloned — run 'task src:clone:*' first."
+    cmds:
+      - |
+        git -C crypto-broker-{{.REPO}} fetch --filter=blob:none --force origin \
+          "+refs/tags/{{.REF}}:refs/tags/{{.REF}}" \
+          || git -C crypto-broker-{{.REPO}} fetch --filter=blob:none origin {{.REF}}
+      - git -C crypto-broker-{{.REPO}} checkout --force --detach {{.REF}}
+      - echo "[📌] {{.REPO}} pinned to {{.REF}}"
+
+  delete:*:
+    desc: "Remove the cloned source repos."
+    vars:
+      REPO: '{{index .MATCH 0}}'
+    requires:
+      vars:
+        - name: REPO
+          enum:
+            ref: .REPOS
+    preconditions:
+      - sh: test -d crypto-broker-{{.REPO}}/.git
+        msg: "Specified repo not found. Already deleted?"
+    cmds:
+      - rm -rf crypto-broker-{{.REPO}}
+
+  status:
+    desc: "Show the checked-out branch, commit and nearest tag of every source repo"
+    silent: true
+    vars:
+      REPOS:
+        ref: .REPOS
+    cmds:
+      - for: { var: REPOS }
+        task: status-repo
+        vars:
+          DIR: 'crypto-broker-{{.ITEM}}'
+
+  status-repo:
+    internal: true
+    silent: true
+    cmds:
+      - |
+        if [ ! -d "{{.DIR}}/.git" ]; then
+          printf '[❌] %-8s not cloned\n' "{{.DIR}}"
+          exit 0
+        fi
+        REF=$(git -C {{.DIR}} symbolic-ref --quiet --short HEAD || echo "DETACHED")
+        SHA=$(git -C {{.DIR}} rev-parse --short HEAD)
+        TAG=$(git -C {{.DIR}} describe --tags --always 2>/dev/null || echo "-")
+        printf '[✅] %-8s %-10s %s (%s)\n' "{{.DIR}}" "$REF" "$SHA" "$TAG"

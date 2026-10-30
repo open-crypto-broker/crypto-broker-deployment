@@ -76,6 +76,7 @@ Profiles:
         EncryptAlg: aes-gcm
         KeySize: 256
       SignCertificate:
+        SigningMode: legacy
         SignAlg: ecdsa
         HashAlg: sha-512
         SKIHashAlg: sha-256
@@ -111,6 +112,7 @@ Profiles:
       HashData:
         HashAlg: sha-384
       SignCertificate:
+        SigningMode: legacy
         SignAlg: rsa
         HashAlg: sha-384
         SKIHashAlg: sha-256
@@ -146,6 +148,7 @@ Profiles:
       HashData:
         HashAlg: sha3-512
       SignCertificate:
+        SigningMode: legacy
         SignAlg: ecdsa
         HashAlg: sha-512 # Using sha-512 as sha3-512 is not yet supported in Go crypto in combination with ecdsa
         SKIHashAlg: sha-256
@@ -182,6 +185,7 @@ Profiles:
         NonceStrategy: user-provided
         TagLength: 96
       SignCertificate:
+        SigningMode: legacy
         SignAlg: rsa
         HashAlg: sha-256
         SKIHashAlg: sha-256
@@ -221,6 +225,7 @@ Profiles:
         NonceStrategy: user-provided
         TagLength: 112
       SignCertificate:
+        SigningMode: legacy
         SignAlg: ecdsa
         HashAlg: sha-384
         SKIHashAlg: sha-384
@@ -260,6 +265,7 @@ Profiles:
         NonceStrategy: user-provided
         TagLength: 128
       SignCertificate:
+        SigningMode: legacy
         SignAlg: ecdsa
         HashAlg: sha-512
         SKIHashAlg: sha-512

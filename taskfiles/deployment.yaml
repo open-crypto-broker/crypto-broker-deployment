@@ -26,12 +26,12 @@ tasks:
         msg: "Specified repo is not cloned and built — run 'task src:clone:*' and 'task build:*' first."
     vars:
       APP: '{{index .MATCH 0}}'
-      GODEBUG: '{{.GODEBUG | default "fips140=off"}}'
     requires:
       vars:
         - name: APP
           enum:
             ref: .APPS
+    dotenv: ["../crypto-broker-server/.env"]
     cmds:
       - task: delete-deployment-folder
         vars:
@@ -52,7 +52,7 @@ tasks:
         vars:
           APP: '{{.APP}}'
       - cf push --random-route
-        --var go_debug={{.GODEBUG}}
+        --var go_debug=$FIPS_GODEBUG_VALUE
         -f deployments/cloud-foundry/{{.APP}}/manifest.yaml
         -p deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment/
 
@@ -125,7 +125,7 @@ tasks:
       - cp deployments/cloud-foundry/otel-collector/otel-config.yaml deployments/cloud-foundry/{{.APP}}/{{.APP}}-deployment/
 
   ################# Kubernetes Deployment ####################
-  kube-up:
+  kube:up:
     desc: "Deploys the Kubernetes Crypto Broker"
     dir: deployments/k8s/kube-broker/
     vars:
@@ -137,21 +137,38 @@ tasks:
           --set server.goDebug="$FIPS_GODEBUG_VALUE"
           crypto-broker --namespace crypto-broker --create-namespace .
 
-  kube-down:
+  kube:down:
     desc: "Destroys the Kubernetes Crypto Broker deployment"
     cmds:
       - helm uninstall crypto-broker -n crypto-broker
 
-  # Load Docker images into Minikube
-  minikube-images:
-    desc: "Load the docker images into minikube"
+  kube:build:*:
+    desc: "Build the Docker images for the Kubernetes deployment"
     vars:
+      REPO: '{{index .MATCH 0}}'
       TAG: '{{.TAG | default "dev"}}'
+    requires:
+      vars:
+        - name: REPO
+          enum:
+            ref: .REPOS
+    dir: crypto-broker-{{.REPO}}
+    dotenv: ["../crypto-broker-{{.REPO}}/.env"]
     cmds:
-      - minikube image load
-          ghcr.io/open-crypto-broker/server:{{.TAG}}
-          ghcr.io/open-crypto-broker/test_app_go:{{.TAG}}
-          ghcr.io/open-crypto-broker/test_app_js:{{.TAG}}
+      - test -f .env || task copy-env
+      - task build-docker
+
+  kube:load:*:
+    desc: "Load the Docker images into minikube"
+    vars:
+      REPO: '{{index .MATCH 0}}'
+      TAG: '{{.TAG | default "dev"}}'
+    requires:
+      vars:
+        - name: REPO
+          enum: [server, test_app_go, test_app_js]
+    cmds:
+      - minikube image load ghcr.io/open-crypto-broker/{{.REPO}}:{{.TAG}}
 
   ################# Docker-Compose Deployment ####################
   docker:*:*:

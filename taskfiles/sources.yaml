@@ -21,6 +21,8 @@ tasks:
             ref: .REPOS
     cmds:
       - git clone --filter=blob:none -b {{.BRANCH}} --single-branch {{.GIT_BASE_URL}}/crypto-broker-{{.REPO}}.git crypto-broker-{{.REPO}}
+      # Create the .env file if it doesn't exist
+      - test -f "crypto-broker-{{.REPO}}/.env" || task copy-env
 
   update:*:
     desc: "Fetch and hard-reset the source repos to the tip of BRANCH='' (default 'main'). Discards local changes and removes any pin."

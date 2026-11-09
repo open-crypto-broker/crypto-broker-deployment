@@ -137,6 +137,9 @@ Before deploying, ensure that the binaries are correctly built.
 For example, if you want to test the FIPS140-3 enabled version, make sure that the `crypto-broker-server` binary is built with the appropriate flags and environment variables to enable FIPS mode.
 The following sections provide guidance for deploying the Crypto Broker Server to various environments, starting with Cloud Foundry.
 
+See the [OpenBao KMS testing guide](doc/kms-openbao.md) to run OpenBao locally,
+add test keys, configure the server, and test encryption and decryption by key ID.
+
 ### Cloud Foundry
 
 #### Cloud Foundry Setup

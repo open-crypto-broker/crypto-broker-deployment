@@ -1,0 +1,35 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  ################# Build Crypto Broker Binary Targets ####################
+  # The sources are managed with the 'src' tasks and should be cloned before building.
+  # The build itself is delegated to the repository's own build task.
+  build:*:
+    desc: "Build the specified binary target: server or CLI client."
+    preconditions:
+      - sh: test -d crypto-broker-{{.REPO}}/.git
+        msg: "Specified repo is not cloned — run 'task src:clone:*' first."
+    vars:
+      REPO: '{{index .MATCH 0}}'
+    requires:
+      vars:
+        - name: REPO
+          enum:
+            ref: .REPOS
+    cmds:
+      # "--force" is needed when GOOS or GOARCH are set to cross-compile the binary
+      - |
+        cd crypto-broker-{{.REPO}}
+        test -f .env || task copy-env
+        task build --force
+
+  build:all:
+    desc: "Build all binary targets: server and CLI clients"
+    vars:
+      REPOS:
+        ref: .REPOS
+    cmds:
+      - for: { var: REPOS }
+        task: build:{{.ITEM}}

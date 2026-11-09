@@ -16,10 +16,8 @@ fullnameOverride: ""
 server:
   name: crypto-broker-server
   image: ghcr.io/open-crypto-broker/server
-  # Directory the server reads profiles from; profiles are baked into the image.
   profilesDir: /app/profiles
-  # fips140=off selects the non-FIPS build path.
-  godebug: fips140=off
+  goDebug: fips140=only # runtime flag for FIPS140 compliance
 
 # Functional test clients exercised against the server over the shared socket.
 # Each entry becomes a container in the pod (skipped when cliStressApp.enabled is true).
@@ -40,6 +38,27 @@ cliTestApps:
       - --csr=/certificates/end-entity.csr
       - --caCert=/certificates/ca_cert.pem
       - --caKey=/certificates/private_key.pem
+  - name: cli-js-encrypt
+    image: ghcr.io/open-crypto-broker/test_app_js
+    args:
+      - --loop=1000
+      - encrypt-data
+      - --profile=Default
+      - --keyRaw=67e1befda6538f162a308bb37b922441bed6e27039a26a48ad8e11c568c4cda0
+      - --nonce=a83f89b37c90f937b8df5011
+      - --aad=36e02c2a81c60eca849739d52dea95f7
+      - Welcome CryptoBroker
+  - name: cli-js-decrypt
+    image: ghcr.io/open-crypto-broker/test_app_js
+    args:
+      - --loop=1000
+      - decrypt-data
+      - --profile=Default
+      - --keyRaw=67e1befda6538f162a308bb37b922441bed6e27039a26a48ad8e11c568c4cda0
+      - --nonce=a83f89b37c90f937b8df5011
+      - --aad=36e02c2a81c60eca849739d52dea95f7
+      - --tag=a77b42e960d89683140cae283a87466e
+      - 71416b876fb0d65c484ec20106af15a36454743b
   - name: cli-go-hash
     image: ghcr.io/open-crypto-broker/test_app_go
     args:
@@ -56,13 +75,27 @@ cliTestApps:
       - --csr=/certificates/end-entity.csr
       - --caCert=/certificates/ca_cert.pem
       - --caKey=/certificates/private_key.pem
-
-# Optional stress-test runner. When enabled it replaces the functional test clients.
-cliStressApp:
-  enabled: false
-  image: ghcr.io/open-crypto-broker/stress_test
-  concurrent: 100
-  num: 100
+  - name: cli-go-encrypt
+    image: ghcr.io/open-crypto-broker/test_app_go
+    args:
+      - --loop=1000
+      - encrypt-data
+      - --profile=Default
+      - --keyRaw=67e1befda6538f162a308bb37b922441bed6e27039a26a48ad8e11c568c4cda0
+      - --nonce=a83f89b37c90f937b8df5011
+      - --aad=36e02c2a81c60eca849739d52dea95f7
+      - Welcome CryptoBroker
+  - name: cli-go-decrypt
+    image: ghcr.io/open-crypto-broker/test_app_go
+    args:
+      - --loop=1000
+      - decrypt-data
+      - --profile=Default
+      - --keyRaw=67e1befda6538f162a308bb37b922441bed6e27039a26a48ad8e11c568c4cda0
+      - --nonce=a83f89b37c90f937b8df5011
+      - --aad=36e02c2a81c60eca849739d52dea95f7
+      - --tag=a77b42e960d89683140cae283a87466e
+      - 71416b876fb0d65c484ec20106af15a36454743b
 
 podAnnotations: {}
 podLabels: {}

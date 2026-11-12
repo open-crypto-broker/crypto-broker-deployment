@@ -49,7 +49,7 @@ task src:pin:server REF=v0.5.0
 > [!IMPORTANT]
 > These clones are disposable build inputs. `task src:update:*` discards local changes without asking, so do not develop inside them.
 
-For a first-time setup, `task initial-setup` clones every repository and builds the server and both clients in one run.
+For a first-time setup, `task initial-setup` configures the local OpenBao KMS, clones every repository, and builds the server and both clients in one run.
 
 ## Build Management
 
@@ -141,7 +141,9 @@ The following sections provide guidance for deploying the Crypto Broker Server t
 
 On macOS or Linux, install and start an in-memory OpenBao development server,
 enable the `keys/` KV-v2 mount, and seed `secret_1` with the AES-256-GCM
-known-answer key. macOS uses Homebrew and Linux uses APT:
+known-answer key. It also seeds `signing_key` with the DER-encoded private
+key and corresponding PEM CA certificate used by KMS certificate signing.
+macOS uses Homebrew and Linux uses APT:
 
 ```bash
 task openbao:setup

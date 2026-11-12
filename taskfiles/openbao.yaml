@@ -8,6 +8,9 @@ vars:
   OPENBAO_MOUNT: keys
   OPENBAO_KEY_ID: secret_1
   OPENBAO_KEY_FIXTURE: testing/encryption/aes-256-gcm.env
+  OPENBAO_SIGNING_KEY_ID: signing_key
+  OPENBAO_SIGNING_KEY_FIXTURE: testing/certificates/test-ca/test-CA-nist-secp384r1.pem
+  OPENBAO_CA_CERT_FIXTURE: testing/certificates/test-ca/cert-test-CA-nist-secp384r1.pem
   OPENBAO_RUNTIME_DIR: /tmp/open-crypto-broker-openbao
 
 env:
@@ -37,6 +40,12 @@ tasks:
           fi
           command -v sudo >/dev/null 2>&1
         msg: "sudo is required to install OpenBao on Linux when not running as root."
+      - sh: |
+          if command -v openssl >/dev/null 2>&1; then
+            exit 0
+          fi
+          [ "$(uname -s)" = "Linux" ] && ! command -v bao >/dev/null 2>&1
+        msg: "OpenSSL is required to prepare the certificate signing fixtures."
     cmds:
       - |
         set -eu
@@ -59,7 +68,7 @@ tasks:
 
             echo "[INFO] Installing OpenBao from the official APT repository..."
             $SUDO apt-get update
-            $SUDO apt-get install -y ca-certificates curl
+            $SUDO apt-get install -y ca-certificates curl openssl
             $SUDO install -d -m 0755 /etc/apt/keyrings
             curl --fail --silent --show-error --location \
               https://openbao.org/assets/openbao-gpg-pub-20240618.asc \
@@ -174,8 +183,42 @@ tasks:
           exit 1
         fi
 
+        SIGNING_KEY=$(openssl pkey \
+          -in "{{.OPENBAO_SIGNING_KEY_FIXTURE}}" \
+          -outform DER \
+          | od -An -v -tx1 \
+          | tr -d ' \n')
+        CA_CERT=$(openssl x509 \
+          -in "{{.OPENBAO_CA_CERT_FIXTURE}}" \
+          -outform PEM)
+        bao kv put \
+          -mount="{{.OPENBAO_MOUNT}}" \
+          "{{.OPENBAO_SIGNING_KEY_ID}}" \
+          key="$SIGNING_KEY" \
+          ca_cert="$CA_CERT" \
+          >/dev/null
+
+        ACTUAL_SIGNING_KEY=$(bao kv get \
+          -mount="{{.OPENBAO_MOUNT}}" \
+          -field=key \
+          "{{.OPENBAO_SIGNING_KEY_ID}}")
+        if [ "$ACTUAL_SIGNING_KEY" != "$SIGNING_KEY" ]; then
+          echo "[ERROR] Seeded OpenBao certificate signing key does not match {{.OPENBAO_SIGNING_KEY_FIXTURE}}"
+          exit 1
+        fi
+
+        ACTUAL_CA_CERT=$(bao kv get \
+          -mount="{{.OPENBAO_MOUNT}}" \
+          -field=ca_cert \
+          "{{.OPENBAO_SIGNING_KEY_ID}}")
+        if [ "$ACTUAL_CA_CERT" != "$CA_CERT" ]; then
+          echo "[ERROR] Seeded OpenBao CA certificate does not match {{.OPENBAO_CA_CERT_FIXTURE}}"
+          exit 1
+        fi
+
         echo "[OK] OpenBao is ready at {{.OPENBAO_ADDRESS}}"
         echo "[OK] KV-v2 key {{.OPENBAO_MOUNT}}/{{.OPENBAO_KEY_ID}} matches the CLI known-answer fixture"
+        echo "[OK] KV-v2 key {{.OPENBAO_MOUNT}}/{{.OPENBAO_SIGNING_KEY_ID}} contains the DER private key and PEM CA certificate"
         echo "[WARN] This fixed root token and in-memory server are for local development only."
 
   status:
@@ -200,7 +243,93 @@ tasks:
           exit 1
         fi
 
+        SIGNING_KEY=$(openssl pkey \
+          -in "{{.OPENBAO_SIGNING_KEY_FIXTURE}}" \
+          -outform DER \
+          | od -An -v -tx1 \
+          | tr -d ' \n')
+        CA_CERT=$(openssl x509 \
+          -in "{{.OPENBAO_CA_CERT_FIXTURE}}" \
+          -outform PEM)
+        ACTUAL_SIGNING_KEY=$(bao kv get \
+          -mount="{{.OPENBAO_MOUNT}}" \
+          -field=key \
+          "{{.OPENBAO_SIGNING_KEY_ID}}")
+        if [ "$ACTUAL_SIGNING_KEY" != "$SIGNING_KEY" ]; then
+          echo "[ERROR] {{.OPENBAO_MOUNT}}/{{.OPENBAO_SIGNING_KEY_ID}} does not match the certificate signing fixture"
+          exit 1
+        fi
+
+        ACTUAL_CA_CERT=$(bao kv get \
+          -mount="{{.OPENBAO_MOUNT}}" \
+          -field=ca_cert \
+          "{{.OPENBAO_SIGNING_KEY_ID}}")
+        if [ "$ACTUAL_CA_CERT" != "$CA_CERT" ]; then
+          echo "[ERROR] {{.OPENBAO_MOUNT}}/{{.OPENBAO_SIGNING_KEY_ID}} does not contain the expected CA certificate"
+          exit 1
+        fi
+
         echo "[OK] KV-v2 key {{.OPENBAO_MOUNT}}/{{.OPENBAO_KEY_ID}} is configured for Crypto Broker"
+        echo "[OK] KV-v2 key {{.OPENBAO_MOUNT}}/{{.OPENBAO_SIGNING_KEY_ID}} is configured with the DER private key and PEM CA certificate"
         if [ -f "{{.OPENBAO_RUNTIME_DIR}}/openbao.log" ]; then
           echo "[INFO] Log: {{.OPENBAO_RUNTIME_DIR}}/openbao.log"
         fi
+
+  key:add:
+    desc: "Add or replace a local OpenBao KV-v2 key (KEY_ID plus KEY_FILE or KEY_HEX)"
+    silent: true
+    platforms: [darwin, linux]
+    requires:
+      vars: [KEY_ID]
+    env:
+      TASK_OPENBAO_KEY_ID: '{{.KEY_ID}}'
+      TASK_OPENBAO_KEY_FILE: '{{.KEY_FILE}}'
+      TASK_OPENBAO_KEY_HEX: '{{.KEY_HEX}}'
+    preconditions:
+      - sh: command -v bao >/dev/null 2>&1
+        msg: "OpenBao is not installed. Run 'task openbao:setup' first."
+    cmds:
+      - |
+        set -eu
+        if [ -n "$TASK_OPENBAO_KEY_FILE" ] && [ -n "$TASK_OPENBAO_KEY_HEX" ]; then
+          echo "[ERROR] Set exactly one of KEY_FILE or KEY_HEX."
+          exit 1
+        fi
+        if [ -z "$TASK_OPENBAO_KEY_FILE" ] && [ -z "$TASK_OPENBAO_KEY_HEX" ]; then
+          echo "[ERROR] Set exactly one of KEY_FILE or KEY_HEX."
+          exit 1
+        fi
+
+        if [ -n "$TASK_OPENBAO_KEY_FILE" ]; then
+          if [ ! -f "$TASK_OPENBAO_KEY_FILE" ]; then
+            echo "[ERROR] Key file does not exist: $TASK_OPENBAO_KEY_FILE"
+            exit 1
+          fi
+          KEY_VALUE=$(od -An -v -tx1 "$TASK_OPENBAO_KEY_FILE" | tr -d ' \n')
+        else
+          KEY_VALUE=${TASK_OPENBAO_KEY_HEX#0x}
+          if [ -z "$KEY_VALUE" ] || [ $(( ${#KEY_VALUE} % 2 )) -ne 0 ] || printf '%s' "$KEY_VALUE" | grep -Eq '[^0-9A-Fa-f]'; then
+            echo "[ERROR] KEY_HEX must contain a non-empty, even number of hexadecimal characters."
+            exit 1
+          fi
+        fi
+
+        bao kv put -mount="{{.OPENBAO_MOUNT}}" "$TASK_OPENBAO_KEY_ID" key="$KEY_VALUE" >/dev/null
+        echo "[OK] Added {{.OPENBAO_MOUNT}}/$TASK_OPENBAO_KEY_ID"
+
+  key:delete:
+    desc: "Permanently delete a local OpenBao KV-v2 key and all of its versions (KEY_ID)"
+    silent: true
+    platforms: [darwin, linux]
+    requires:
+      vars: [KEY_ID]
+    env:
+      TASK_OPENBAO_KEY_ID: '{{.KEY_ID}}'
+    preconditions:
+      - sh: command -v bao >/dev/null 2>&1
+        msg: "OpenBao is not installed. Run 'task openbao:setup' first."
+    cmds:
+      - |
+        set -eu
+        bao kv metadata delete -mount="{{.OPENBAO_MOUNT}}" "$TASK_OPENBAO_KEY_ID"
+        echo "[OK] Deleted {{.OPENBAO_MOUNT}}/$TASK_OPENBAO_KEY_ID"

@@ -12,8 +12,14 @@ vars:
   # Algorithm selection
   EC_CURVE: secp384r1
   RSA_BITS: '3072'
-  MLDSA_ALG: mldsa65
   COMPOSITE_ALG: p256_mldsa44
+  # OpenSSL configuration options for ML-DSA:
+  # ML-DSA uses OpenSSL's built-in implementation (>= 3.5), not oqsprovider, so that a
+  # FIPS 204 seed is available. Must match the profile's signAlg (e.g. ml-dsa-65).
+  MLDSA_ALG: ML-DSA-65
+  MLDSA_NAME: mldsa65
+  # Force the default provider's ML-DSA and write seed-only PKCS#8 (Go's crypto/x509 only parses the seed-only form)
+  NATIVE: -propquery provider=default -provparam ml-dsa.output_formats=seed-only
 
 tasks:
   ################# Sign/Verify Data test material ####################
@@ -38,13 +44,13 @@ tasks:
 
   sign-data-test:payload:
     desc: "Create the test payload"
-    deps: [sign-test:init]
+    deps: [sign-data-test:init]
     cmds:
       - echo "crypto-broker sign/verify test payload" > {{.OUT_DIR}}/test.txt
 
   sign-data-test:keys:
     desc: "Generate keys for legacy, post-quantum and hybrid modes"
-    deps: [sign-test:pull, sign-test:init]
+    deps: [sign-data-test:pull, sign-data-test:init]
     cmds:
       # --- Legacy: ECDSA ---
       - '{{.DOCKER_RUN}} openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:{{.EC_CURVE}} -out ec-{{.EC_CURVE}}-priv.pem'
@@ -52,9 +58,9 @@ tasks:
       # --- Legacy: RSA (PSS) ---
       - '{{.DOCKER_RUN}} openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:{{.RSA_BITS}} -out rsa-{{.RSA_BITS}}-priv.pem'
       - '{{.DOCKER_RUN}} openssl pkey -in rsa-{{.RSA_BITS}}-priv.pem -pubout -out rsa-{{.RSA_BITS}}-pub.pem'
-      # --- Post-quantum ---
-      - '{{.DOCKER_RUN}} openssl genpkey {{.PROV}} -algorithm {{.MLDSA_ALG}} -out {{.MLDSA_ALG}}-priv.pem'
-      - '{{.DOCKER_RUN}} openssl pkey {{.PROV}} -in {{.MLDSA_ALG}}-priv.pem -pubout -out {{.MLDSA_ALG}}-pub.pem'
+      # --- Post-quantum: ML-DSA (seed-only PKCS#8 / SPKI) ---
+      - '{{.DOCKER_RUN}} openssl genpkey {{.NATIVE}} -algorithm {{.MLDSA_ALG}} -out {{.MLDSA_NAME}}-priv.pem'
+      - '{{.DOCKER_RUN}} openssl pkey {{.NATIVE}} -in {{.MLDSA_NAME}}-priv.pem -pubout -out {{.MLDSA_NAME}}-pub.pem'
       # --- Hybrid: composite key ---
       - '{{.DOCKER_RUN}} openssl genpkey {{.PROV}} -algorithm {{.COMPOSITE_ALG}} -out composite-{{.COMPOSITE_ALG}}-priv.pem'
       - '{{.DOCKER_RUN}} openssl pkey {{.PROV}} -in composite-{{.COMPOSITE_ALG}}-priv.pem -pubout -out composite-{{.COMPOSITE_ALG}}-pub.pem'
@@ -67,8 +73,8 @@ tasks:
       - '{{.DOCKER_RUN}} openssl dgst -sha384 -sign ec-{{.EC_CURVE}}-priv.pem -out test.txt.ecdsa.sig test.txt'
       # --- Legacy: RSA-PSS (SHA-256) ---
       - '{{.DOCKER_RUN}} openssl dgst -sha256 -sigopt rsa_padding_mode:pss -sigopt rsa_pss_saltlen:digest -sign rsa-{{.RSA_BITS}}-priv.pem -out test.txt.rsa.sig test.txt'
-      # --- Post-quantum: ML-DSA (pure, -rawin) ---
-      - '{{.DOCKER_RUN}} openssl pkeyutl {{.PROV}} -sign -inkey {{.MLDSA_ALG}}-priv.pem -rawin -in test.txt -out test.txt.mldsa.sig'
+      # --- Post-quantum: ML-DSA (pure, empty context, -rawin) ---
+      - '{{.DOCKER_RUN}} openssl pkeyutl -propquery provider=default -sign -inkey {{.MLDSA_NAME}}-priv.pem -rawin -in test.txt -out test.txt.mldsa.sig'
       # --- Hybrid: composite signature (single atomic sig) ---
       - '{{.DOCKER_RUN}} openssl pkeyutl {{.PROV}} -sign -inkey composite-{{.COMPOSITE_ALG}}-priv.pem -rawin -in test.txt -out test.txt.hybrid.sig'
 
@@ -81,7 +87,7 @@ tasks:
       # --- Legacy: RSA-PSS (SHA-256) ---
       - '{{.DOCKER_RUN}} openssl dgst -sha256 -sigopt rsa_padding_mode:pss -sigopt rsa_pss_saltlen:digest -verify rsa-{{.RSA_BITS}}-pub.pem -signature test.txt.rsa.sig test.txt'
       # --- Post-quantum: ML-DSA ---
-      - '{{.DOCKER_RUN}} openssl pkeyutl {{.PROV}} -verify -pubin -inkey {{.MLDSA_ALG}}-pub.pem -rawin -in test.txt -sigfile test.txt.mldsa.sig'
+      - '{{.DOCKER_RUN}} openssl pkeyutl -propquery provider=default -verify -pubin -inkey {{.MLDSA_NAME}}-pub.pem -rawin -in test.txt -sigfile test.txt.mldsa.sig'
       # --- Hybrid: composite signature (single atomic sig) ---
       - '{{.DOCKER_RUN}} openssl pkeyutl {{.PROV}} -verify -pubin -inkey composite-{{.COMPOSITE_ALG}}-pub.pem -rawin -in test.txt -sigfile test.txt.hybrid.sig'
 

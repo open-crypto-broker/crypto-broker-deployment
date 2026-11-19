@@ -1,0 +1,100 @@
+version: '3'
+
+vars:
+  # oqs-provider image: OpenSSL 3.x with built-in ML-DSA (oqsprovider is loaded by default as well)
+  OQS_IMAGE: openquantumsafe/oqs-ossl3:latest
+  # Run openssl in the container as the current user so files aren't root-owned; this directory is mounted as /work
+  DOCKER_RUN: docker run --rm --user "$(id -u):$(id -g)" -v "{{.TASKFILE_DIR}}:/work" -w /work {{.OQS_IMAGE}}
+  CA_DIR: test-ca
+  CSR_DIR: test-csr
+  # Self-signed root CA attributes shared by all test CAs
+  CA_SUBJECT: /C=DE/ST=Bavaria/O=Test-Organization/OU=Test-Organization-CA/CN=Test-Organization-Root-CA
+  CA_VALIDITY: -not_before 20230101010101Z -not_after 20330101010101Z
+  CA_EXTENSIONS: -addext "basicConstraints=critical,CA:TRUE,pathlen:1" -addext "keyUsage=critical,digitalSignature,keyCertSign,cRLSign"
+  # Subject shared by all test CSRs
+  CSR_SUBJECT: /C=DE/O=Test Org/OU=Test Org Certificate Service/OU=Dev/OU=staging-certificates-101/L=test/CN=test-common-name
+  # CSR signed by every CA in the verify task
+  VERIFY_CSR: csr-nist-secp256r1.csr
+  # Force the default provider's ML-DSA (not oqsprovider) and write seed-only PKCS#8 (Go's crypto/x509 only parses the seed).
+  # No effect on RSA/EC keys, so it is passed to every openssl command that loads or writes a CA key.
+  NATIVE: -propquery provider=default -provparam ml-dsa.output_formats=seed-only
+
+tasks:
+  generate:
+    desc: "Generate all test CAs and CSRs (overwrites the files in test-ca/ and test-csr/)"
+    cmds:
+      - task: ca
+      - task: csr
+
+  ca:
+    desc: "Generate the test CA private keys (test-CA-*.pem) and self-signed CA certificates (cert-test-CA-*.pem)"
+    cmds:
+      # --- Legacy: ECDSA (SEC1 "EC PRIVATE KEY") ---
+      - task: ca:create
+        vars: {NAME: nist-secp256r1, KEYGEN: 'ecparam -genkey -noout -name P-256', DIGEST: -sha256}
+      - task: ca:create
+        vars: {NAME: nist-secp384r1, KEYGEN: 'ecparam -genkey -noout -name P-384', DIGEST: -sha384}
+      - task: ca:create
+        vars: {NAME: nist-secp521r1, KEYGEN: 'ecparam -genkey -noout -name P-521', DIGEST: -sha512}
+      # --- Legacy: RSA (PKCS#8 "PRIVATE KEY") ---
+      - task: ca:create
+        vars: {NAME: rsa-3072, KEYGEN: 'genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072', DIGEST: -sha256}
+      # --- Post-quantum: ML-DSA (seed-only PKCS#8 "PRIVATE KEY"; pure ML-DSA signs the TBS directly, no digest) ---
+      - task: ca:create
+        vars: {NAME: ml-dsa-65, KEYGEN: 'genpkey {{.NATIVE}} -algorithm ML-DSA-65', DIGEST: ''}
+
+  ca:create:
+    internal: true
+    requires:
+      vars: [NAME, KEYGEN]
+    cmds:
+      - '{{.DOCKER_RUN}} openssl {{.KEYGEN}} -out {{.CA_DIR}}/test-CA-{{.NAME}}.pem'
+      - '{{.DOCKER_RUN}} openssl req {{.NATIVE}} -x509 -new -key {{.CA_DIR}}/test-CA-{{.NAME}}.pem {{.DIGEST}} -subj "{{.CA_SUBJECT}}" {{.CA_VALIDITY}} {{.CA_EXTENSIONS}} -out {{.CA_DIR}}/cert-test-CA-{{.NAME}}.pem'
+
+  csr:
+    desc: "Generate the test CSRs (csr-*.csr); the subject private keys are discarded"
+    cmds:
+      # --- RSA ---
+      - task: csr:create
+        vars: {NAME: rsa-2048, NEWKEY: 'rsa:2048', DIGEST: -sha256}
+      - task: csr:create
+        vars: {NAME: rsa-3072, NEWKEY: 'rsa:3072', DIGEST: -sha256}
+      - task: csr:create
+        vars: {NAME: rsa-4096, NEWKEY: 'rsa:4096', DIGEST: -sha384}
+      - task: csr:create
+        vars: {NAME: rsa-8192, NEWKEY: 'rsa:8192', DIGEST: -sha384}
+      # Key generation for this one takes noticeably longer than the rest
+      - task: csr:create
+        vars: {NAME: rsa-15380, NEWKEY: 'rsa:15380', DIGEST: -sha512}
+      # --- ECDSA ---
+      - task: csr:create
+        vars: {NAME: nist-secp224r1, NEWKEY: 'EC -pkeyopt ec_paramgen_curve:P-224', DIGEST: -sha224}
+      - task: csr:create
+        vars: {NAME: nist-secp256r1, NEWKEY: 'EC -pkeyopt ec_paramgen_curve:P-256', DIGEST: -sha256}
+      - task: csr:create
+        vars: {NAME: nist-secp384r1, NEWKEY: 'EC -pkeyopt ec_paramgen_curve:P-384', DIGEST: -sha384}
+      - task: csr:create
+        vars: {NAME: nist-secp521r1, NEWKEY: 'EC -pkeyopt ec_paramgen_curve:P-521', DIGEST: -sha512}
+
+  csr:create:
+    internal: true
+    requires:
+      vars: [NAME, NEWKEY, DIGEST]
+    cmds:
+      - '{{.DOCKER_RUN}} openssl req -new -newkey {{.NEWKEY}} -noenc -keyout /dev/null {{.DIGEST}} -subj "{{.CSR_SUBJECT}}" -out {{.CSR_DIR}}/csr-{{.NAME}}.csr'
+
+  verify:
+    desc: "Check all CSR signatures and CA certificates, and issue + verify a leaf certificate with every CA"
+    cmds:
+      - |
+        for csr in {{.CSR_DIR}}/csr-*.csr; do
+          {{.DOCKER_RUN}} openssl req -verify -noout -in "$csr" || exit 1
+        done
+      - |
+        for cert in {{.CA_DIR}}/cert-test-CA-*.pem; do
+          key={{.CA_DIR}}/${cert#{{.CA_DIR}}/cert-}
+          echo "== $cert"
+          {{.DOCKER_RUN}} sh -c "openssl verify -CAfile $cert $cert \
+            && openssl x509 {{.NATIVE}} -req -in {{.CSR_DIR}}/{{.VERIFY_CSR}} -CA $cert -CAkey $key -out /tmp/leaf.pem \
+            && openssl verify -CAfile $cert /tmp/leaf.pem" || exit 1
+        done

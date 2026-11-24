@@ -29,13 +29,13 @@ tasks:
   ca:
     desc: "Generate the test CA private keys (test-CA-*.pem) and self-signed CA certificates (cert-test-CA-*.pem)"
     cmds:
-      # --- Legacy: ECDSA (SEC1 "EC PRIVATE KEY") ---
+      # --- Legacy: ECDSA (PKCS#8 "PRIVATE KEY") ---
       - task: ca:create
-        vars: {NAME: nist-secp256r1, KEYGEN: 'ecparam -genkey -noout -name P-256', DIGEST: -sha256}
+        vars: {NAME: nist-secp256r1, KEYGEN: 'genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256', DIGEST: -sha256}
       - task: ca:create
-        vars: {NAME: nist-secp384r1, KEYGEN: 'ecparam -genkey -noout -name P-384', DIGEST: -sha384}
+        vars: {NAME: nist-secp384r1, KEYGEN: 'genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-384', DIGEST: -sha384}
       - task: ca:create
-        vars: {NAME: nist-secp521r1, KEYGEN: 'ecparam -genkey -noout -name P-521', DIGEST: -sha512}
+        vars: {NAME: nist-secp521r1, KEYGEN: 'genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-521', DIGEST: -sha512}
       # --- Legacy: RSA (PKCS#8 "PRIVATE KEY") ---
       - task: ca:create
         vars: {NAME: rsa-3072, KEYGEN: 'genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072', DIGEST: -sha256}

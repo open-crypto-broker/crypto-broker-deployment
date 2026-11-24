@@ -3,6 +3,7 @@
 version: '3'
 
 includes:
+  openbao: taskfiles/openbao.yaml
   src:
     taskfile: taskfiles/sources.yaml
     vars:
@@ -74,11 +75,12 @@ tasks:
         echo "[✅] All prerequisites found"
 
   initial-setup:
-    desc: "First-time setup: clone all source repos and build the server and both CLI clients"
+    desc: "First-time setup: configure local KMS, clone all source repos, and build the server and both CLI clients"
     vars:
       REPOS:
         ref: .REPOS
     cmds:
+      - task: openbao:setup
       - for: { var: REPOS }
         task: src:clone:{{.ITEM}}
       - task: build:all

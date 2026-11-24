@@ -49,7 +49,7 @@ task src:pin:server REF=v0.5.0
 > [!IMPORTANT]
 > These clones are disposable build inputs. `task src:update:*` discards local changes without asking, so do not develop inside them.
 
-For a first-time setup, `task initial-setup` clones every repository and builds the server and both clients in one run.
+For a first-time setup, `task initial-setup` configures the local OpenBao KMS, clones every repository, and builds the server and both clients in one run.
 
 ## Build Management
 
@@ -136,6 +136,37 @@ task test:clients:sign-certificate CREATE_COMP_MATRIX=true
 Before deploying, ensure that the binaries are correctly built.
 For example, if you want to test the FIPS140-3 enabled version, make sure that the `crypto-broker-server` binary is built with the appropriate flags and environment variables to enable FIPS mode.
 The following sections provide guidance for deploying the Crypto Broker Server to various environments, starting with Cloud Foundry.
+
+### Local OpenBao development setup
+
+On macOS or Linux, install and start an in-memory OpenBao development server,
+enable the `keys/` KV-v2 mount, and seed `secret_1` with the AES-256-GCM
+known-answer key. It also seeds `signing_key` with the DER-encoded private
+key and corresponding PEM CA certificate used by KMS certificate signing.
+macOS uses Homebrew and Linux uses APT:
+
+```bash
+task openbao:setup
+```
+
+Check that OpenBao is running and that the development key is readable:
+
+```bash
+task openbao:status
+```
+
+The setup matches the local Crypto Broker server configuration in
+`configs/openbao.yaml`: `http://127.0.0.1:8200`, token `dev-token`, mount
+`keys`, and key ID `secret_1`. After setup, run `task run` in
+`crypto-broker-server`, then run these known-answer commands in
+`crypto-broker-cli-go`:
+
+```bash
+task kms:test-encrypt-data
+task kms:test-decrypt-data
+```
+
+This setup uses a fixed root token and an in-memory ONLY OpenBao server.
 
 ### Cloud Foundry
 
